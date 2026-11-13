@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-paper-100 font-sans text-charcoal-900;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-charcoal-700 ring-offset-2 ring-offset-paper-100;
+  }
+}

@@ -1,0 +1,239 @@
+import { useState, type FormEvent } from 'react';
+import { ChevronDown, ChevronUp, Heart, Plus, Send } from 'lucide-react';
+import { ME_ID } from '@/data/mockData';
+import { useSocial } from '@/state/SocialContext';
+import { formatTimeAgo } from '@/lib/time';
+import { Avatar } from '@/components/Avatar';
+import { PrivateReplyModal } from '@/components/PrivateReplyModal';
+import { PrivateRepliesList } from '@/components/PrivateRepliesList';
+import type { Post } from '@/types';
+
+interface PostCardProps {
+  post: Post;
+  onOpenProfile: (userId: string) => void;
+}
+
+export function PostCard({ post, onOpenProfile }: PostCardProps) {
+  const {
+    getUser,
+    isLiked,
+    likeCount,
+    toggleLike,
+    getPrivateReplies,
+    getPostNotes,
+    addPostNote,
+  } = useSocial();
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [repliesOpen, setRepliesOpen] = useState(false);
+  const [noteComposerOpen, setNoteComposerOpen] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [likePulse, setLikePulse] = useState(0);
+
+  const author = getUser(post.authorId);
+  if (!author) return null;
+
+  const isOwn = post.authorId === ME_ID;
+  const liked = isLiked(post.id);
+  const privateReplies = isOwn ? getPrivateReplies(post.id) : [];
+  const postNotes = isOwn ? getPostNotes(post.id) : [];
+
+  const handleLike = () => {
+    toggleLike(post.id);
+    setLikePulse((count) => count + 1);
+  };
+
+  const handleAddNote = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const content = noteDraft.trim();
+    if (!content) return;
+    addPostNote(post.id, content);
+    setNoteDraft('');
+    setNoteComposerOpen(false);
+    setNotesExpanded(false);
+  };
+
+  return (
+    <article id={`post-${post.id}`} className="border-b border-fog-200 py-7 first:pt-0 last:border-b-0">
+      <div className="flex gap-4">
+        <button
+          type="button"
+          onClick={() => onOpenProfile(author.id)}
+          className="rounded-full transition hover:opacity-80"
+          aria-label={`View ${author.name}'s profile`}
+        >
+          <Avatar id={author.id} name={author.name} avatarUrl={author.avatarUrl} />
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <header className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <button
+              type="button"
+              onClick={() => onOpenProfile(author.id)}
+              className="text-[15px] font-medium text-charcoal-900 hover:underline"
+            >
+              {author.name}
+            </button>
+            <span className="text-sm text-charcoal-500">@{author.username}</span>
+            <span aria-hidden="true" className="text-charcoal-500">
+              ·
+            </span>
+            <time dateTime={post.createdAt} className="text-sm text-charcoal-500">
+              {formatTimeAgo(post.createdAt)}
+            </time>
+          </header>
+
+          <div className="mt-2 flex items-start gap-2">
+            <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[15px] leading-[1.65] text-charcoal-800">
+              {post.content}
+            </p>
+            {isOwn && postNotes.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setNotesExpanded((expanded) => !expanded)}
+                aria-expanded={notesExpanded}
+                aria-controls={`post-notes-${post.id}`}
+                aria-label={notesExpanded ? 'Collapse notes' : 'Expand notes'}
+                title={notesExpanded ? 'Collapse notes' : 'Expand notes'}
+                className="-mr-1 mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-fog-200/70 hover:text-gray-600"
+              >
+                {notesExpanded ? (
+                  <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                ) : (
+                  <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                )}
+              </button>
+            )}
+          </div>
+
+          {isOwn && postNotes.length > 0 && notesExpanded && (
+            <div
+              id={`post-notes-${post.id}`}
+              className="mt-4 flex flex-col gap-4 border-l-2 border-gray-200 pl-4"
+            >
+              {postNotes.map((note) => (
+                <div key={note.id}>
+                  <time dateTime={note.createdAt} className="mb-1 block text-xs text-gray-400">
+                    {formatTimeAgo(note.createdAt)}
+                  </time>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-charcoal-700">
+                    {note.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {isOwn && noteComposerOpen && (
+            <form onSubmit={handleAddNote} className="mt-4 border-l-2 border-gray-200 pl-4">
+              <label htmlFor={`post-note-${post.id}`} className="sr-only">
+                Add a note to your post
+              </label>
+              <textarea
+                id={`post-note-${post.id}`}
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value.slice(0, 800))}
+                rows={3}
+                autoFocus
+                className="w-full resize-none border-b border-gray-200 bg-transparent px-1 py-2 text-sm leading-relaxed text-charcoal-900 focus:border-gray-400 focus:outline-none"
+              />
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNoteComposerOpen(false);
+                    setNoteDraft('');
+                  }}
+                  className="rounded-full px-3 py-1.5 text-xs font-medium text-charcoal-600 transition hover:text-charcoal-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!noteDraft.trim()}
+                  className="rounded-full bg-charcoal-900 px-4 py-1.5 text-xs font-medium text-paper-50 transition hover:bg-charcoal-700 disabled:cursor-not-allowed disabled:bg-fog-300 disabled:text-charcoal-500"
+                >
+                  Add note
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="mt-6 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleLike}
+              aria-pressed={liked}
+              aria-label={liked ? 'Unlike post' : 'Like post'}
+              className={`-ml-2.5 flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm transition duration-200 hover:bg-fog-200/70 ${
+                liked ? 'text-charcoal-900' : 'text-charcoal-500 hover:text-charcoal-900'
+              }`}
+            >
+              <Heart
+                key={likePulse}
+                className={`h-4 w-4 transition-colors duration-200 ${
+                  liked ? 'animate-pop fill-charcoal-900 text-charcoal-900' : ''
+                }`}
+              />
+              <span>{likeCount(post.id)}</span>
+            </button>
+
+            {isOwn ? (
+              <button
+                type="button"
+                onClick={() => setRepliesOpen((open) => !open)}
+                aria-expanded={repliesOpen}
+                aria-label={`Private replies${privateReplies.length > 0 ? ` ${privateReplies.length}` : ''}`}
+                title={`Private replies${privateReplies.length > 0 ? ` ${privateReplies.length}` : ''}`}
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-charcoal-500 transition hover:bg-fog-200/70 hover:text-charcoal-900"
+              >
+                <Send className="h-4 w-4" />
+                {privateReplies.length > 0 && (
+                  <span className="text-xs tabular-nums">{privateReplies.length}</span>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setReplyOpen(true)}
+                aria-label="Private reply"
+                title="Private reply"
+                className="rounded-full px-2.5 py-1.5 text-charcoal-500 transition hover:bg-fog-200/70 hover:text-charcoal-900"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            )}
+
+            {isOwn && (
+              <button
+                type="button"
+                onClick={() => setNoteComposerOpen((open) => !open)}
+                aria-expanded={noteComposerOpen}
+                aria-label="Add a note"
+                title="Add a note"
+                className="rounded-full px-2.5 py-1.5 text-gray-400 transition hover:bg-fog-200/70 hover:text-gray-600"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+              </button>
+            )}
+
+          </div>
+
+          {isOwn && repliesOpen && (
+            <div className="mt-5 animate-fade-in rounded-2xl bg-paper-200/70 p-4">
+              <PrivateRepliesList postId={post.id} replies={privateReplies} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {replyOpen && (
+        <PrivateReplyModal
+          postId={post.id}
+          authorId={post.authorId}
+          onClose={() => setReplyOpen(false)}
+        />
+      )}
+    </article>
+  );
+}
