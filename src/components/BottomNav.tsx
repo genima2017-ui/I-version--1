@@ -22,12 +22,13 @@ export function BottomNav({ page, onNavigate }: BottomNavProps) {
                 type="button"
                 onClick={() => onNavigate(item.id)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex w-full flex-col items-center gap-1 py-3 text-xs transition-colors duration-200 ${
-                  active ? 'font-medium text-charcoal-900' : 'text-charcoal-500 hover:text-charcoal-800'
+                aria-label={item.label}
+                title={item.label}
+                className={`flex h-12 w-full items-center justify-center transition-colors duration-200 ${
+                  active ? 'text-charcoal-900' : 'text-charcoal-500 hover:text-charcoal-800'
                 }`}
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2 : 1.75} />
-                {item.label}
               </button>
             </li>
           );
