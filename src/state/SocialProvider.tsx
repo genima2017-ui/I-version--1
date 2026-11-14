@@ -79,6 +79,19 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     [follows],
   );
 
+  const getFollowing = useCallback(
+    (userId: string) =>
+      (follows[userId] ?? [])
+        .map((followingId) => users.find((user) => user.id === followingId))
+        .filter((user): user is User => user !== undefined),
+    [follows, users],
+  );
+
+  const getFollowers = useCallback(
+    (userId: string) => users.filter((user) => (follows[user.id] ?? []).includes(userId)),
+    [follows, users],
+  );
+
   const getPrivateReplies = useCallback(
     (postId: string) => {
       const post = posts.find((item) => item.id === postId);
@@ -171,6 +184,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       toggleFollow,
       followingCount,
       followerCount,
+      getFollowing,
+      getFollowers,
       getPrivateReplies,
       addPrivateReply,
       getPostNotes,
@@ -193,6 +208,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       toggleFollow,
       followingCount,
       followerCount,
+      getFollowing,
+      getFollowers,
       getPrivateReplies,
       addPrivateReply,
       getPostNotes,

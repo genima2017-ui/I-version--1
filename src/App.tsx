@@ -69,11 +69,11 @@ export default function App() {
   }, [page, profileId, targetPostId]);
 
   return (
-    <div className="min-h-screen bg-paper-100 text-charcoal-900">
+    <div className="relative z-10 min-h-screen bg-paper-100/45 text-charcoal-900">
       <SideNav page={page} onNavigate={navigate} />
 
       <main className="px-5 pb-28 pt-10 sm:px-8 sm:pt-14 lg:pb-20 lg:pl-72 lg:pr-12">
-        <div className="mx-auto w-full max-w-xl">
+        <div key={`${page}-${profileId}`} className="glacier-page-flow mx-auto w-full max-w-xl">
           {page === 'community' && <CommunityPage onOpenProfile={openProfile} />}
           {page === 'profile' && (
             <ProfilePage

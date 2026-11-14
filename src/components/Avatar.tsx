@@ -2,7 +2,7 @@ const TONES = [
   'bg-fog-200 text-charcoal-800',
   'bg-charcoal-700 text-paper-50',
   'bg-paper-200 text-charcoal-700 ring-1 ring-inset ring-fog-300',
-  'bg-charcoal-500 text-paper-50',
+  'bg-charcoal-600 text-paper-50',
   'bg-fog-300 text-charcoal-900',
 ];
 

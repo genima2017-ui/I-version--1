@@ -54,31 +54,29 @@ export function PostCard({ post, onOpenProfile }: PostCardProps) {
   };
 
   return (
-    <article id={`post-${post.id}`} className="border-b border-fog-200 py-7 first:pt-0 last:border-b-0">
-      <div className="flex gap-4">
-        <button
-          type="button"
-          onClick={() => onOpenProfile(author.id)}
-          className="rounded-full transition hover:opacity-80"
-          aria-label={`View ${author.name}'s profile`}
-        >
-          <Avatar id={author.id} name={author.name} avatarUrl={author.avatarUrl} />
-        </button>
-
-        <div className="min-w-0 flex-1">
-          <header className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+    <article id={`post-${post.id}`} className="liquid-card my-4 rounded-3xl px-5 py-7 first:mt-0">
+      <div className="min-w-0">
+          <header className="flex min-w-0 items-center gap-x-2">
             <button
               type="button"
               onClick={() => onOpenProfile(author.id)}
-              className="text-[15px] font-medium text-charcoal-900 hover:underline"
+              className="shrink-0 rounded-full transition hover:opacity-80"
+              aria-label={`View ${author.name}'s profile`}
+            >
+              <Avatar id={author.id} name={author.name} avatarUrl={author.avatarUrl} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenProfile(author.id)}
+              className="max-w-[42%] shrink-0 truncate text-[15px] font-medium text-charcoal-900 hover:underline"
             >
               {author.name}
             </button>
-            <span className="text-sm text-charcoal-500">@{author.username}</span>
-            <span aria-hidden="true" className="text-charcoal-500">
+            <span className="min-w-0 truncate text-sm text-charcoal-500">@{author.username}</span>
+            <span aria-hidden="true" className="shrink-0 text-charcoal-500">
               ·
             </span>
-            <time dateTime={post.createdAt} className="text-sm text-charcoal-500">
+            <time dateTime={post.createdAt} className="shrink-0 whitespace-nowrap text-sm text-charcoal-500">
               {formatTimeAgo(post.createdAt)}
             </time>
           </header>
@@ -159,13 +157,13 @@ export function PostCard({ post, onOpenProfile }: PostCardProps) {
             </form>
           )}
 
-          <div className="mt-6 flex items-center gap-1">
+          <div className="mt-6 flex items-center justify-end gap-1">
             <button
               type="button"
               onClick={handleLike}
               aria-pressed={liked}
               aria-label={liked ? 'Unlike post' : 'Like post'}
-              className={`-ml-2.5 flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm transition duration-200 hover:bg-fog-200/70 ${
+              className={`flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm transition duration-200 hover:bg-fog-200/70 ${
                 liked ? 'text-charcoal-900' : 'text-charcoal-500 hover:text-charcoal-900'
               }`}
             >
@@ -224,7 +222,6 @@ export function PostCard({ post, onOpenProfile }: PostCardProps) {
               <PrivateRepliesList postId={post.id} replies={privateReplies} />
             </div>
           )}
-        </div>
       </div>
 
       {replyOpen && (

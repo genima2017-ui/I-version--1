@@ -7,6 +7,7 @@ import { EditProfileModal } from '@/components/EditProfileModal';
 import { InboxModal } from '@/components/InboxModal';
 import { DirectMessageModal } from '@/components/DirectMessageModal';
 import { FollowButton } from '@/components/FollowButton';
+import { Modal } from '@/components/Modal';
 import { PostCard } from '@/components/PostCard';
 
 interface ProfilePageProps {
@@ -16,10 +17,19 @@ interface ProfilePageProps {
 }
 
 export function ProfilePage({ userId, onOpenProfile, onOpenPost }: ProfilePageProps) {
-  const { getUser, posts, followingCount, followerCount, hasUnreadInboxItems } = useSocial();
+  const {
+    getUser,
+    posts,
+    followingCount,
+    followerCount,
+    getFollowing,
+    getFollowers,
+    hasUnreadInboxItems,
+  } = useSocial();
   const [editing, setEditing] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [chatParticipantId, setChatParticipantId] = useState<string | null>(null);
+  const [followList, setFollowList] = useState<'following' | 'followers' | null>(null);
   const user = getUser(userId);
 
   if (!user) {
@@ -32,6 +42,12 @@ export function ProfilePage({ userId, onOpenProfile, onOpenPost }: ProfilePagePr
 
   const isOwn = userId === ME_ID;
   const userPosts = posts.filter((post) => post.authorId === userId);
+  const followUsers =
+    followList === 'following'
+      ? getFollowing(userId)
+      : followList === 'followers'
+        ? getFollowers(userId)
+        : [];
 
   return (
     <section className="flex flex-col gap-12">
@@ -65,12 +81,36 @@ export function ProfilePage({ userId, onOpenProfile, onOpenPost }: ProfilePagePr
 
           <dl className="flex items-center gap-8 pt-1">
             <div className="flex flex-col items-center sm:items-start">
-              <dd className="text-lg font-medium tabular-nums text-charcoal-900">{followingCount(userId)}</dd>
-              <dt className="text-xs uppercase tracking-wider text-charcoal-500">Following</dt>
+              <dt className="sr-only">Following</dt>
+              <dd>
+                <button
+                  type="button"
+                  onClick={() => setFollowList('following')}
+                  aria-label={`View ${followingCount(userId)} following`}
+                  className="group flex flex-col items-center sm:items-start"
+                >
+                  <span className="text-lg font-medium tabular-nums text-charcoal-900 transition group-hover:text-charcoal-600">
+                    {followingCount(userId)}
+                  </span>
+                  <span className="text-xs uppercase tracking-wider text-charcoal-500">Following</span>
+                </button>
+              </dd>
             </div>
             <div className="flex flex-col items-center sm:items-start">
-              <dd className="text-lg font-medium tabular-nums text-charcoal-900">{followerCount(userId)}</dd>
-              <dt className="text-xs uppercase tracking-wider text-charcoal-500">Followers</dt>
+              <dt className="sr-only">Followers</dt>
+              <dd>
+                <button
+                  type="button"
+                  onClick={() => setFollowList('followers')}
+                  aria-label={`View ${followerCount(userId)} followers`}
+                  className="group flex flex-col items-center sm:items-start"
+                >
+                  <span className="text-lg font-medium tabular-nums text-charcoal-900 transition group-hover:text-charcoal-600">
+                    {followerCount(userId)}
+                  </span>
+                  <span className="text-xs uppercase tracking-wider text-charcoal-500">Followers</span>
+                </button>
+              </dd>
             </div>
           </dl>
 
@@ -95,9 +135,11 @@ export function ProfilePage({ userId, onOpenProfile, onOpenPost }: ProfilePagePr
           Posts · {userPosts.length}
         </h2>
         {userPosts.length > 0 ? (
-          userPosts.map((post) => (
-            <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
-          ))
+          <div className="glacier-flow-list">
+            {userPosts.map((post) => (
+              <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
+            ))}
+          </div>
         ) : (
           <p className="rounded-2xl border border-dashed border-fog-300 px-6 py-10 text-center text-sm text-charcoal-500">
             No posts yet.
@@ -106,6 +148,47 @@ export function ProfilePage({ userId, onOpenProfile, onOpenPost }: ProfilePagePr
       </div>
 
       {editing && <EditProfileModal onClose={() => setEditing(false)} />}
+      {followList && (
+        <Modal
+          title={followList === 'following' ? 'Following' : 'Followers'}
+          onClose={() => setFollowList(null)}
+          fullScreenMobile
+        >
+          {followUsers.length > 0 ? (
+            <ul className="divide-y divide-fog-200">
+              {followUsers.map((followUser) => (
+                <li key={followUser.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFollowList(null);
+                      onOpenProfile(followUser.id);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition hover:bg-fog-100/80"
+                  >
+                    <Avatar
+                      id={followUser.id}
+                      name={followUser.name}
+                      avatarUrl={followUser.avatarUrl}
+                      size="sm"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-charcoal-900">
+                        {followUser.name}
+                      </p>
+                      <p className="truncate text-xs text-charcoal-500">@{followUser.username}</p>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="py-10 text-center text-sm text-charcoal-500">
+              {followList === 'following' ? 'Not following anyone yet.' : 'No followers yet.'}
+            </p>
+          )}
+        </Modal>
+      )}
       {inboxOpen && (
         <InboxModal
           onClose={() => setInboxOpen(false)}

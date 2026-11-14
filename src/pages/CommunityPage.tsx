@@ -63,7 +63,7 @@ export function CommunityPage({ onOpenProfile }: CommunityPageProps) {
         </div>
 
         {visiblePosts.length > 0 ? (
-          <div key={tab} className="animate-fade-in">
+          <div key={tab} className="glacier-flow-list">
             {visiblePosts.map((post) => (
               <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
             ))}

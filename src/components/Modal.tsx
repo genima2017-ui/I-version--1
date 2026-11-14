@@ -1,14 +1,22 @@
 import { useEffect, useId, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ModalProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  fullScreen?: boolean;
   fullScreenMobile?: boolean;
 }
 
-export function Modal({ title, onClose, children, fullScreenMobile = false }: ModalProps) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  fullScreen = false,
+  fullScreenMobile = false,
+}: ModalProps) {
   const titleId = useId();
 
   useEffect(() => {
@@ -24,10 +32,16 @@ export function Modal({ title, onClose, children, fullScreenMobile = false }: Mo
     };
   }, [onClose]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+  return createPortal(
+    <div
+      className={`fixed inset-0 z-50 flex justify-center ${
+        fullScreen ? 'items-stretch' : 'items-end sm:items-center sm:p-6'
+      }`}
+    >
       <div
-        className="absolute inset-0 animate-fade-in bg-charcoal-900/25 backdrop-blur-[2px]"
+        className={`absolute inset-0 animate-fade-in bg-charcoal-900/15 backdrop-blur-[6px] ${
+          fullScreen ? 'hidden' : ''
+        }`}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -35,13 +49,23 @@ export function Modal({ title, onClose, children, fullScreenMobile = false }: Mo
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative flex w-full animate-sheet-in flex-col overflow-hidden border border-fog-300/70 bg-paper-50 shadow-2xl shadow-charcoal-900/10 ${
-          fullScreenMobile
+        className={`relative flex w-full flex-col overflow-hidden ${
+          fullScreen
+            ? 'h-[100dvh] max-h-[100dvh] animate-fade-in rounded-none border-0 bg-white shadow-none'
+            : `liquid-surface liquid-modal animate-sheet-in border border-white/70 ${
+                fullScreenMobile
             ? 'h-[100dvh] max-h-[100dvh] rounded-none border-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-2xl sm:border'
             : 'max-h-[90vh] rounded-t-3xl sm:max-w-lg sm:rounded-2xl'
+              }`
         }`}
       >
-        <div className="flex items-center justify-between border-b border-fog-200 px-6 py-5">
+        <div
+          className={`flex items-center justify-between border-b px-6 py-5 ${
+            fullScreen
+              ? 'border-fog-200 bg-white'
+              : 'border-white/65 bg-white/25 backdrop-blur-xl'
+          }`}
+        >
           <h2 id={titleId} className="font-serif text-xl text-charcoal-900">
             {title}
           </h2>
@@ -56,7 +80,9 @@ export function Modal({ title, onClose, children, fullScreenMobile = false }: Mo
         </div>
         <div
           className={
-            fullScreenMobile
+            fullScreen
+              ? 'flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-0 py-0'
+              : fullScreenMobile
               ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-0 py-0 sm:block sm:flex-none sm:overflow-y-auto sm:px-6 sm:py-6'
               : 'overflow-y-auto px-6 py-6'
           }
@@ -64,6 +90,7 @@ export function Modal({ title, onClose, children, fullScreenMobile = false }: Mo
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

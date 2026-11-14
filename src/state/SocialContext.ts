@@ -16,6 +16,8 @@ export interface SocialContextValue {
   toggleFollow: (userId: string) => void;
   followingCount: (userId: string) => number;
   followerCount: (userId: string) => number;
+  getFollowing: (userId: string) => User[];
+  getFollowers: (userId: string) => User[];
   getPrivateReplies: (postId: string) => PrivateReply[];
   addPrivateReply: (postId: string, content: string, replyToId?: string) => void;
   getPostNotes: (postId: string) => PostNote[];

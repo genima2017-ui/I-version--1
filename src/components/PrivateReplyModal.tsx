@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Check, Lock } from 'lucide-react';
 import { useSocial } from '@/state/SocialContext';
 import { Modal } from '@/components/Modal';
@@ -16,31 +16,45 @@ export function PrivateReplyModal({ postId, authorId, onClose }: PrivateReplyMod
   const { getUser, addPrivateReply } = useSocial();
   const [draft, setDraft] = useState('');
   const [sent, setSent] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const timers = useRef<number[]>([]);
   const author = getUser(authorId);
   const trimmed = draft.trim();
+
+  useEffect(
+    () => () => {
+      timers.current.forEach((timer) => window.clearTimeout(timer));
+    },
+    [],
+  );
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!trimmed) return;
     addPrivateReply(postId, trimmed);
     setSent(true);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      timers.current.push(window.setTimeout(onClose, 900));
+      return;
+    }
+    timers.current.push(window.setTimeout(() => setIsClosing(true), 800));
+    timers.current.push(window.setTimeout(onClose, 1080));
   };
 
   return (
     <Modal title="Private reply" onClose={onClose}>
       {sent ? (
-        <div className="flex flex-col items-center py-6 text-center">
+        <div
+          role="status"
+          aria-live="polite"
+          className={`flex flex-col items-center py-6 text-center ${
+            isClosing ? 'reply-success-exit' : 'animate-fade-in'
+          }`}
+        >
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-fog-200 text-charcoal-800">
             <Check className="h-5 w-5" />
           </span>
           <p className="mt-5 font-serif text-lg text-charcoal-900">Your reply has been sent.</p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-6 rounded-full border border-fog-400 px-5 py-2 text-sm font-medium text-charcoal-800 transition hover:border-charcoal-500"
-          >
-            Done
-          </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">

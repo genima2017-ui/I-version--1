@@ -24,7 +24,7 @@ export function PostComposer() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-fog-300/70 bg-paper-50 p-5 shadow-sm shadow-charcoal-900/[0.03] transition focus-within:border-fog-400"
+      className="liquid-surface rounded-3xl border border-white/80 p-5 transition focus-within:border-fog-400"
     >
       <div className="flex gap-4">
         <Avatar id={me.id} name={me.name} avatarUrl={me.avatarUrl} />
@@ -48,7 +48,7 @@ export function PostComposer() {
             <button
               type="submit"
               disabled={!trimmed}
-              className="rounded-full bg-charcoal-900 px-5 py-2 text-sm font-medium text-paper-50 transition hover:bg-charcoal-700 disabled:cursor-not-allowed disabled:bg-fog-300 disabled:text-charcoal-500"
+              className="liquid-publish-button rounded-full px-5 py-2 text-sm font-medium disabled:cursor-not-allowed"
             >
               Publish
             </button>

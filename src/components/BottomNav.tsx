@@ -10,7 +10,7 @@ export function BottomNav({ page, onNavigate }: BottomNavProps) {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-fog-200 bg-paper-100/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/70 bg-white/45 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_32px_rgba(26,27,30,0.055)] backdrop-blur-2xl lg:hidden"
     >
       <ul className="mx-auto grid max-w-md grid-cols-3">
         {NAV_ITEMS.map((item) => {

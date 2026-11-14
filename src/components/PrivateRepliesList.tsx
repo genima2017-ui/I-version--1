@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { Reply as ReplyIcon } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { LoaderCircle, Reply as ReplyIcon } from 'lucide-react';
 import { useSocial } from '@/state/SocialContext';
 import { formatTimeAgo } from '@/lib/time';
 import type { PrivateReply } from '@/types';
@@ -16,14 +16,28 @@ export function PrivateRepliesList({ postId, replies }: PrivateRepliesListProps)
   const { getUser, addPrivateReply } = useSocial();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const sendTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (sendTimer.current !== null) window.clearTimeout(sendTimer.current);
+    },
+    [],
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>, replyId: string) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content) return;
-    addPrivateReply(postId, content, replyId);
-    setDraft('');
-    setReplyingTo(null);
+    if (!content || isSending) return;
+    setIsSending(true);
+    sendTimer.current = window.setTimeout(() => {
+      addPrivateReply(postId, content, replyId);
+      setDraft('');
+      setReplyingTo(null);
+      setIsSending(false);
+      sendTimer.current = null;
+    }, 450);
   };
 
   if (replies.length === 0) {
@@ -111,11 +125,13 @@ export function PrivateRepliesList({ postId, replies }: PrivateRepliesListProps)
                     onChange={(event) => setDraft(event.target.value.slice(0, 800))}
                     rows={2}
                     autoFocus
+                    disabled={isSending}
                     className="w-full resize-none rounded-lg border border-fog-300 bg-paper-100 px-3 py-2 text-sm text-charcoal-900 focus:border-charcoal-500 focus:outline-none"
                   />
                   <div className="mt-2 flex justify-end gap-2">
                     <button
                       type="button"
+                      disabled={isSending}
                       onClick={() => {
                         setReplyingTo(null);
                         setDraft('');
@@ -126,10 +142,17 @@ export function PrivateRepliesList({ postId, replies }: PrivateRepliesListProps)
                     </button>
                     <button
                       type="submit"
-                      disabled={!draft.trim()}
-                      className="rounded-full bg-charcoal-900 px-4 py-1.5 text-xs font-medium text-paper-50 transition hover:bg-charcoal-700 disabled:cursor-not-allowed disabled:bg-fog-300 disabled:text-charcoal-500"
+                      disabled={!draft.trim() || isSending}
+                      className="inline-flex min-w-20 items-center justify-center gap-1.5 rounded-full bg-charcoal-900 px-4 py-1.5 text-xs font-medium text-paper-50 transition hover:bg-charcoal-700 disabled:cursor-not-allowed disabled:bg-fog-300 disabled:text-charcoal-500"
                     >
-                      Send
+                      {isSending ? (
+                        <>
+                          <LoaderCircle aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                          <span role="status">Sending...</span>
+                        </>
+                      ) : (
+                        'Send'
+                      )}
                     </button>
                   </div>
                 </form>

@@ -49,12 +49,13 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
   };
 
   return (
-    <Modal title="信箱" onClose={handleClose}>
-      <div
+    <Modal title="信箱" onClose={handleClose} fullScreen>
+      <div className="flex h-full min-h-0 flex-col bg-white px-5 py-5 sm:px-8 sm:py-7">
+        <div
         role="tablist"
         aria-label="Inbox categories"
-        className="-mx-2 mb-5 grid grid-cols-2 border-b border-fog-200"
-      >
+        className="mb-5 grid grid-cols-2 border-b border-fog-200"
+        >
         {TABS.map(({ category, label }) => (
           <button
             key={category}
@@ -75,12 +76,12 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
         ))}
       </div>
 
-      <div
-        id="inbox-panel"
-        role="tabpanel"
-        aria-labelledby={`inbox-tab-${activeCategory}`}
-        className="min-h-40"
-      >
+        <div
+          id="inbox-panel"
+          role="tabpanel"
+          aria-labelledby={`inbox-tab-${activeCategory}`}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
         {visibleItems.length > 0 ? (
           <ul className="divide-y divide-fog-200">
             {visibleItems.map((item) => {
@@ -122,6 +123,7 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
         ) : (
           <p className="py-12 text-center text-sm text-charcoal-500">这里暂时安静。</p>
         )}
+        </div>
       </div>
     </Modal>
   );
