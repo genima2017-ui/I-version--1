@@ -1,4 +1,4 @@
-import { useEffect, useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -8,6 +8,7 @@ interface ModalProps {
   children: ReactNode;
   fullScreen?: boolean;
   fullScreenMobile?: boolean;
+  smoothViewport?: boolean;
 }
 
 export function Modal({
@@ -16,8 +17,10 @@ export function Modal({
   children,
   fullScreen = false,
   fullScreenMobile = false,
+  smoothViewport = false,
 }: ModalProps) {
   const titleId = useId();
+  const modalRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -32,9 +35,33 @@ export function Modal({
     };
   }, [onClose]);
 
+  useEffect(() => {
+    if (!fullScreen || !window.visualViewport) return;
+
+    const viewport = window.visualViewport;
+    const syncToVisualViewport = () => {
+      const root = modalRootRef.current;
+      if (!root) return;
+      root.style.top = `${viewport.offsetTop}px`;
+      root.style.height = `${viewport.height}px`;
+    };
+
+    syncToVisualViewport();
+    viewport.addEventListener('resize', syncToVisualViewport);
+    viewport.addEventListener('scroll', syncToVisualViewport);
+
+    return () => {
+      viewport.removeEventListener('resize', syncToVisualViewport);
+      viewport.removeEventListener('scroll', syncToVisualViewport);
+    };
+  }, [fullScreen]);
+
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex justify-center ${
+      ref={modalRootRef}
+      className={`fixed inset-x-0 top-0 z-50 box-border flex w-full max-w-full justify-center overflow-hidden ${
+        smoothViewport ? 'chat-viewport-transition' : ''
+      } ${
         fullScreen ? 'items-stretch' : 'items-end sm:items-center sm:p-6'
       }`}
     >
@@ -49,9 +76,9 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative flex w-full flex-col overflow-hidden ${
+        className={`relative box-border flex w-full max-w-full min-w-0 flex-col overflow-hidden ${
           fullScreen
-            ? 'h-[100dvh] max-h-[100dvh] animate-fade-in rounded-none border-0 bg-white shadow-none'
+            ? 'h-full max-h-full animate-fade-in rounded-none border-0 bg-white shadow-none'
             : `liquid-surface liquid-modal animate-sheet-in border border-white/70 ${
                 fullScreenMobile
             ? 'h-[100dvh] max-h-[100dvh] rounded-none border-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-2xl sm:border'
@@ -81,7 +108,7 @@ export function Modal({
         <div
           className={
             fullScreen
-              ? 'flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-0 py-0'
+              ? 'box-border flex w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white px-0 py-0'
               : fullScreenMobile
               ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-0 py-0 sm:block sm:flex-none sm:overflow-y-auto sm:px-6 sm:py-6'
               : 'overflow-y-auto px-6 py-6'

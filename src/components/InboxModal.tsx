@@ -8,7 +8,7 @@ import type { InboxCategory, InboxItem, User } from '@/types';
 interface InboxModalProps {
   onClose: () => void;
   onOpenConversation: (participantId: string) => void;
-  onOpenPost: (postId: string) => void;
+  onOpenPost: (postId: string, replyId?: string) => void;
 }
 
 const TABS: { category: InboxCategory; label: string }[] = [
@@ -40,12 +40,12 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
     onOpenConversation(participantId);
   };
 
-  const handleOpenPost = (postId: string) => {
+  const handleOpenPost = (postId: string, replyId?: string) => {
     if (import.meta.env.DEV) {
-      console.log('[Inbox] comment clicked', { postId });
+      console.log('[Inbox] comment clicked', { postId, replyId });
     }
     markAllInboxItemsRead();
-    onOpenPost(postId);
+    onOpenPost(postId, replyId);
   };
 
   return (
@@ -99,7 +99,7 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
                         if (isMessage && item.senderId) {
                           handleOpenConversation(item.senderId);
                         } else if (item.postId) {
-                          handleOpenPost(item.postId);
+                          handleOpenPost(item.postId, item.replyId);
                         }
                       }}
                       aria-label={

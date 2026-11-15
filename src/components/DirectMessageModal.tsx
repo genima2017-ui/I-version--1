@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Send } from 'lucide-react';
 import { ME_ID } from '@/data/mockData';
-import { Avatar } from '@/components/Avatar';
 import { Modal } from '@/components/Modal';
 import { formatTimeAgo } from '@/lib/time';
 import { useSocial } from '@/state/SocialContext';
@@ -19,6 +18,7 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
   const { getUser, getDirectMessages, sendDirectMessage } = useSocial();
   const [draft, setDraft] = useState('');
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const draftInputRef = useRef<HTMLTextAreaElement>(null);
   const participant = getUser(participantId);
   const messages = getDirectMessages(participantId);
   const trimmedDraft = draft.trim();
@@ -52,30 +52,16 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
     if (!trimmedDraft) return;
     sendDirectMessage(participantId, trimmedDraft);
     setDraft('');
+    draftInputRef.current?.focus({ preventScroll: true });
   };
 
   return (
-    <Modal title={participant?.name ?? '私信'} onClose={onClose} fullScreen>
-      <div className="flex h-full min-h-0 flex-col bg-white">
-        {participant && (
-          <div className="flex items-center gap-3 border-b border-white/60 bg-white/25 px-5 py-3 backdrop-blur-xl sm:px-6">
-            <Avatar
-              id={participant.id}
-              name={participant.name}
-              avatarUrl={participant.avatarUrl}
-              size="sm"
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-charcoal-900">{participant.name}</p>
-              <p className="truncate text-xs text-charcoal-500">@{participant.username}</p>
-            </div>
-          </div>
-        )}
-
+    <Modal title={participant?.name ?? '私信'} onClose={onClose} fullScreen smoothViewport>
+      <div className="box-border flex h-full w-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden bg-white">
         <div
           aria-live="polite"
           aria-label="Conversation messages"
-          className="flex-1 space-y-3 overflow-y-auto px-4 py-5 sm:px-6"
+          className="box-border w-full min-h-0 min-w-0 max-w-full flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6"
         >
           {messageGroups.length > 0 ? (
             messageGroups.map((group) => {
@@ -85,13 +71,13 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
                   key={group[0].id}
                   role="group"
                   aria-label={isMine ? 'Your messages' : 'Incoming messages'}
-                  className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+                  className={`flex w-full min-w-0 max-w-full ${isMine ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`flex max-w-[85%] flex-col sm:max-w-[75%] ${isMine ? 'items-end text-right' : 'items-start text-left'}`}>
+                  <div className={`box-border flex min-w-0 max-w-[85%] flex-col sm:max-w-[75%] ${isMine ? 'items-end text-right' : 'items-start text-left'}`}>
                     {group.map((message) => {
                       const showTimestamp = timestampMessageIds.has(message.id);
                       return (
-                        <div key={message.id} className={showTimestamp ? 'py-1.5' : 'py-0'}>
+                        <div key={message.id} className={`box-border w-full min-w-0 max-w-full ${showTimestamp ? 'py-1.5' : 'py-0'}`}>
                           <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-charcoal-800">
                             {message.content}
                           </p>
@@ -126,38 +112,35 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
 
         <form
           onSubmit={handleSubmit}
-          className="border-t border-white/60 bg-white/20 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl sm:p-4"
+          className="box-border flex w-full min-w-0 max-w-full shrink-0 items-center gap-2 border-t border-white/60 bg-white/80 px-4 pt-1 pb-[env(safe-area-inset-bottom)]"
         >
           <label htmlFor="direct-message-draft" className="sr-only">
             输入私信
           </label>
-          <div className="flex items-end gap-2">
-            <textarea
-              id="direct-message-draft"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value.slice(0, MAX_LENGTH))}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }}
-              placeholder="写一条私信…"
-              rows={1}
-              className="max-h-28 min-h-11 flex-1 resize-y rounded-xl border border-white/80 bg-white/45 px-3 py-2.5 text-sm leading-relaxed text-charcoal-900 shadow-inner shadow-white/50 backdrop-blur-xl placeholder:text-charcoal-500/70 focus:border-charcoal-500 focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!trimmedDraft}
-              aria-label="发送私信"
-              className="liquid-send-button flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-charcoal-900 disabled:cursor-not-allowed disabled:saturate-50 disabled:opacity-55"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="mt-1.5 px-1 text-right text-[11px] tabular-nums text-charcoal-500">
-            {MAX_LENGTH - draft.length}
-          </p>
+          <textarea
+            ref={draftInputRef}
+            id="direct-message-draft"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value.slice(0, MAX_LENGTH))}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+            placeholder="写一条私信…"
+            rows={1}
+            className="box-border h-12 w-full min-w-0 max-w-full flex-1 resize-none rounded-xl border border-white/80 bg-white/45 px-3 py-2.5 text-sm leading-relaxed text-charcoal-900 shadow-inner shadow-white/50 backdrop-blur-xl placeholder:text-charcoal-500/70 focus:border-charcoal-500 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!trimmedDraft}
+            aria-label="发送私信"
+            onMouseDown={(event) => event.preventDefault()}
+            className="liquid-send-button box-border flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-charcoal-900 disabled:cursor-not-allowed disabled:saturate-50 disabled:opacity-55"
+          >
+            <Send className="h-4 w-4" />
+          </button>
         </form>
       </div>
     </Modal>

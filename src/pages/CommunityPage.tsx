@@ -27,13 +27,6 @@ export function CommunityPage({ onOpenProfile }: CommunityPageProps) {
 
   return (
     <section className="flex flex-col gap-10">
-      <header>
-        <h1 className="font-serif text-4xl leading-tight text-charcoal-900 sm:text-5xl">Community</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-charcoal-500">
-          Thoughts shared quietly. No likes counted, no pressure to reply.
-        </p>
-      </header>
-
       <PostComposer />
 
       <div className="flex flex-col gap-6">

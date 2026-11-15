@@ -7,12 +7,13 @@ import type { PrivateReply } from '@/types';
 interface PrivateRepliesListProps {
   postId: string;
   replies: PrivateReply[];
+  highlightReplyId?: string;
 }
 
 const newestFirst = (left: PrivateReply, right: PrivateReply) =>
   Date.parse(right.createdAt) - Date.parse(left.createdAt);
 
-export function PrivateRepliesList({ postId, replies }: PrivateRepliesListProps) {
+export function PrivateRepliesList({ postId, replies, highlightReplyId }: PrivateRepliesListProps) {
   const { getUser, addPrivateReply } = useSocial();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -83,7 +84,11 @@ export function PrivateRepliesList({ postId, replies }: PrivateRepliesListProps)
           const replying = replyingTo === reply.id;
 
           return (
-            <li key={reply.id} className="rounded-xl border border-fog-200 bg-paper-50 px-4 py-3">
+            <li
+              key={reply.id}
+              id={`private-reply-${reply.id}`}
+              className="rounded-xl border border-fog-200 bg-paper-50 px-4 py-3"
+            >
               <div className="mb-1.5 flex items-baseline justify-between gap-3">
                 <span className="text-sm font-medium text-charcoal-800">
                   {getUser(reply.authorId)?.name ?? 'Someone'}
@@ -97,7 +102,7 @@ export function PrivateRepliesList({ postId, replies }: PrivateRepliesListProps)
               {childReplies.length > 0 && (
                 <ul className="mt-3 flex flex-col gap-3 border-l border-fog-300 pl-3">
                   {childReplies.map((child) => (
-                    <li key={child.id}>
+                    <li key={child.id} id={`private-reply-${child.id}`}>
                       <div className="mb-1 flex items-baseline justify-between gap-3">
                         <span className="text-xs font-medium text-charcoal-700">
                           {getUser(child.authorId)?.name ?? 'You'}
@@ -160,11 +165,14 @@ export function PrivateRepliesList({ postId, replies }: PrivateRepliesListProps)
                 <div className="mt-2 flex justify-end">
                   <button
                     type="button"
+                    id={`reply-action-${reply.id}`}
                     onClick={() => {
                       setReplyingTo(reply.id);
                       setDraft('');
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-fog-300 bg-paper-50 px-3 py-1.5 text-sm font-medium text-charcoal-800 shadow-sm transition hover:border-charcoal-500 hover:bg-paper-100 hover:text-charcoal-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal-500"
+                    className={`inline-flex items-center gap-1.5 rounded-full border border-fog-300 bg-paper-50 px-3 py-1.5 text-sm font-medium text-charcoal-800 shadow-sm transition hover:border-charcoal-500 hover:bg-paper-100 hover:text-charcoal-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal-500 ${
+                      highlightReplyId === reply.id ? 'reply-target-flash' : ''
+                    }`}
                   >
                     <ReplyIcon aria-hidden="true" className="h-4 w-4" />
                     Reply

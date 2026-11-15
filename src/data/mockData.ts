@@ -162,6 +162,7 @@ export const INITIAL_INBOX_ITEMS: InboxItem[] = [
     content: '这样的下午很难得，值得好好珍惜。',
     context: '有时我喜欢一个不必解释自己的整个下午。',
     postId: 'p2',
+    replyId: 'r1',
     senderId: 'maren',
     createdAt: minutesAgo(30),
     isRead: false,

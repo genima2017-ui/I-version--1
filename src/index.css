@@ -47,14 +47,39 @@
   }
 }
 
-@keyframes reply-success-exit {
-  to {
-    opacity: 0;
-    transform: translate3d(0, -8px, 0) scale(0.98);
+@keyframes reply-target-flash {
+  0%, 100% {
+    background-color: rgba(56, 59, 66, 0);
+    color: #2a2c31;
+    box-shadow: 0 0 0 0 rgba(56, 59, 66, 0);
+    transform: scale(1);
+  }
+  35%, 70% {
+    background-color: #383b42;
+    color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(92, 97, 105, 0.16);
+    transform: scale(1.035);
+  }
+}
+
+@keyframes auth-smile-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
   }
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   html {
     min-height: 100%;
     -webkit-font-smoothing: antialiased;
@@ -62,6 +87,8 @@
 
   body {
     @apply bg-paper-100 font-sans text-charcoal-900;
+    margin: 0;
+    min-width: 0;
     min-height: 100vh;
     background-image:
       repeating-linear-gradient(
@@ -73,6 +100,11 @@
       linear-gradient(154deg, rgba(255, 255, 255, 0.9) 0%, transparent 44%),
       linear-gradient(165deg, #ffffff 0%, #fafaf8 58%, #f3f3f0 100%);
     background-attachment: fixed;
+  }
+
+  #root {
+    min-width: 0;
+    min-height: 100vh;
   }
 
   body::before {
@@ -105,6 +137,24 @@
   ::selection {
     @apply bg-fog-200 text-charcoal-900;
   }
+}
+
+.pb-safe {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+.chat-viewport-transition {
+  transition:
+    height 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    top 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.auth-smile-float {
+  animation: auth-smile-float 4s ease-in-out infinite;
+}
+
+.reply-target-flash {
+  animation: reply-target-flash 1.4s ease-in-out 2;
 }
 
 .glacier-page-flow {
@@ -207,10 +257,6 @@
   box-shadow: none;
 }
 
-.reply-success-exit {
-  animation: reply-success-exit 280ms ease-in forwards;
-}
-
 @media (prefers-reduced-motion: reduce) {
   body::before,
   .glacier-page-flow,
@@ -232,7 +278,18 @@
     transition: none;
   }
 
-  .reply-success-exit {
+  .chat-viewport-transition {
+    transition: none;
+  }
+
+  .reply-target-flash {
+    animation: none;
+    background-color: #383b42;
+    color: #ffffff;
+  }
+
+  .auth-smile-float {
     animation: none;
   }
+
 }

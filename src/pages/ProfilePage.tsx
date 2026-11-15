@@ -13,10 +13,11 @@ import { PostCard } from '@/components/PostCard';
 interface ProfilePageProps {
   userId: string;
   onOpenProfile: (userId: string) => void;
-  onOpenPost: (postId: string) => void;
+  onOpenPost: (postId: string, replyId?: string) => void;
+  targetPost: { postId: string; replyId?: string } | null;
 }
 
-export function ProfilePage({ userId, onOpenProfile, onOpenPost }: ProfilePageProps) {
+export function ProfilePage({ userId, onOpenProfile, onOpenPost, targetPost }: ProfilePageProps) {
   const {
     getUser,
     posts,
@@ -137,7 +138,12 @@ export function ProfilePage({ userId, onOpenProfile, onOpenPost }: ProfilePagePr
         {userPosts.length > 0 ? (
           <div className="glacier-flow-list">
             {userPosts.map((post) => (
-              <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
+              <PostCard
+                key={post.id}
+                post={post}
+                onOpenProfile={onOpenProfile}
+                highlightReplyId={targetPost?.postId === post.id ? targetPost.replyId : undefined}
+              />
             ))}
           </div>
         ) : (
@@ -192,12 +198,12 @@ export function ProfilePage({ userId, onOpenProfile, onOpenPost }: ProfilePagePr
       {inboxOpen && (
         <InboxModal
           onClose={() => setInboxOpen(false)}
-          onOpenPost={(postId) => {
+          onOpenPost={(postId, replyId) => {
             if (import.meta.env.DEV) {
-              console.log('[Profile] closing inbox and opening post', { postId });
+              console.log('[Profile] closing inbox and opening comment', { postId, replyId });
             }
             setInboxOpen(false);
-            onOpenPost(postId);
+            onOpenPost(postId, replyId);
           }}
           onOpenConversation={(participantId) => {
             setInboxOpen(false);

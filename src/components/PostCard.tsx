@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { ChevronDown, ChevronUp, Heart, Plus, Send } from 'lucide-react';
 import { ME_ID } from '@/data/mockData';
 import { useSocial } from '@/state/SocialContext';
@@ -11,9 +11,10 @@ import type { Post } from '@/types';
 interface PostCardProps {
   post: Post;
   onOpenProfile: (userId: string) => void;
+  highlightReplyId?: string;
 }
 
-export function PostCard({ post, onOpenProfile }: PostCardProps) {
+export function PostCard({ post, onOpenProfile, highlightReplyId }: PostCardProps) {
   const {
     getUser,
     isLiked,
@@ -29,6 +30,10 @@ export function PostCard({ post, onOpenProfile }: PostCardProps) {
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [likePulse, setLikePulse] = useState(0);
+
+  useEffect(() => {
+    if (highlightReplyId) setRepliesOpen(true);
+  }, [highlightReplyId]);
 
   const author = getUser(post.authorId);
   if (!author) return null;
@@ -85,23 +90,6 @@ export function PostCard({ post, onOpenProfile }: PostCardProps) {
             <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[15px] leading-[1.65] text-charcoal-800">
               {post.content}
             </p>
-            {isOwn && postNotes.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setNotesExpanded((expanded) => !expanded)}
-                aria-expanded={notesExpanded}
-                aria-controls={`post-notes-${post.id}`}
-                aria-label={notesExpanded ? 'Collapse notes' : 'Expand notes'}
-                title={notesExpanded ? 'Collapse notes' : 'Expand notes'}
-                className="-mr-1 mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-fog-200/70 hover:text-gray-600"
-              >
-                {notesExpanded ? (
-                  <ChevronUp aria-hidden="true" className="h-4 w-4" />
-                ) : (
-                  <ChevronDown aria-hidden="true" className="h-4 w-4" />
-                )}
-              </button>
-            )}
           </div>
 
           {isOwn && postNotes.length > 0 && notesExpanded && (
@@ -215,11 +203,33 @@ export function PostCard({ post, onOpenProfile }: PostCardProps) {
               </button>
             )}
 
+            {isOwn && postNotes.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setNotesExpanded((expanded) => !expanded)}
+                aria-expanded={notesExpanded}
+                aria-controls={`post-notes-${post.id}`}
+                aria-label={notesExpanded ? 'Collapse notes' : 'Expand notes'}
+                title={notesExpanded ? 'Collapse notes' : 'Expand notes'}
+                className="rounded-full px-2.5 py-1.5 text-gray-400 transition hover:bg-fog-200/70 hover:text-gray-600"
+              >
+                {notesExpanded ? (
+                  <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                ) : (
+                  <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                )}
+              </button>
+            )}
+
           </div>
 
           {isOwn && repliesOpen && (
             <div className="mt-5 animate-fade-in rounded-2xl bg-paper-200/70 p-4">
-              <PrivateRepliesList postId={post.id} replies={privateReplies} />
+              <PrivateRepliesList
+                postId={post.id}
+                replies={privateReplies}
+                highlightReplyId={highlightReplyId}
+              />
             </div>
           )}
       </div>

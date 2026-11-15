@@ -39,6 +39,7 @@ export interface InboxItem {
   context?: string;
   senderId?: string;
   postId?: string;
+  replyId?: string;
   createdAt: string;
   isRead: boolean;
 }

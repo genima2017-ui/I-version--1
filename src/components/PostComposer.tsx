@@ -32,7 +32,7 @@ export function PostComposer() {
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value.slice(0, MAX_LENGTH))}
-            placeholder="What is on your mind, quietly?"
+            placeholder="What's on your mind?"
             rows={3}
             aria-label="Write a post"
             className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-charcoal-900 placeholder:text-charcoal-500/70 focus:outline-none"

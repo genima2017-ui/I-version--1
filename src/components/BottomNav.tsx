@@ -1,3 +1,4 @@
+import { Smile } from 'lucide-react';
 import { NAV_ITEMS } from '@/lib/navigation';
 import type { Page } from '@/types';
 
@@ -15,7 +16,7 @@ export function BottomNav({ page, onNavigate }: BottomNavProps) {
       <ul className="mx-auto grid max-w-md grid-cols-3">
         {NAV_ITEMS.map((item) => {
           const active = page === item.id;
-          const Icon = item.icon;
+          const Icon = item.id === 'profile' ? Smile : item.icon;
           return (
             <li key={item.id}>
               <button
