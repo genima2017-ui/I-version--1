@@ -22,7 +22,12 @@ export interface SocialContextValue {
   getFollowing: (userId: string) => User[];
   getFollowers: (userId: string) => User[];
   getPrivateReplies: (postId: string) => PrivateReply[];
-  addPrivateReply: (postId: string, content: string, replyToId?: string) => Promise<boolean>;
+  addPrivateReply: (
+    postId: string,
+    receiverId: string,
+    content: string,
+    replyToId?: string,
+  ) => Promise<boolean>;
   getPostNotes: (postId: string) => PostNote[];
   addPostNote: (postId: string, content: string) => void;
   updatePostNote: (noteId: string, content: string) => void;

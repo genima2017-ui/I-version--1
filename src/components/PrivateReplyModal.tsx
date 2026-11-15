@@ -25,7 +25,7 @@ export function PrivateReplyModal({ postId, authorId, onClose }: PrivateReplyMod
     if (!trimmed || isSending) return;
     setIsSending(true);
     setSendError('');
-    const sent = await addPrivateReply(postId, trimmed);
+    const sent = await addPrivateReply(postId, authorId, trimmed);
     setIsSending(false);
     if (sent) {
       onClose();

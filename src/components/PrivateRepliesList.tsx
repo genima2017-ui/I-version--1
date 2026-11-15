@@ -6,6 +6,7 @@ import type { PrivateReply } from '@/types';
 
 interface PrivateRepliesListProps {
   postId: string;
+  receiverId: string;
   replies: PrivateReply[];
   highlightReplyId?: string;
 }
@@ -13,7 +14,12 @@ interface PrivateRepliesListProps {
 const newestFirst = (left: PrivateReply, right: PrivateReply) =>
   Date.parse(right.createdAt) - Date.parse(left.createdAt);
 
-export function PrivateRepliesList({ postId, replies, highlightReplyId }: PrivateRepliesListProps) {
+export function PrivateRepliesList({
+  postId,
+  receiverId,
+  replies,
+  highlightReplyId,
+}: PrivateRepliesListProps) {
   const { getUser, addPrivateReply } = useSocial();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -35,7 +41,7 @@ export function PrivateRepliesList({ postId, replies, highlightReplyId }: Privat
     setIsSending(true);
     setSendError('');
     sendTimer.current = window.setTimeout(() => {
-      void addPrivateReply(postId, content, replyId).then((sent) => {
+      void addPrivateReply(postId, receiverId, content, replyId).then((sent) => {
         if (sent) {
           setDraft('');
           setReplyingTo(null);

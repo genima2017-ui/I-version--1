@@ -336,7 +336,9 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   );
 
   const addPrivateReply = useCallback(
-    async (postId: string, content: string, replyToId?: string) => {
+    async (postId: string, receiverId: string, content: string, replyToId?: string) => {
+      if (!postId || !receiverId || !content.trim()) return false;
+
       if (!currentUserId || !supabase) {
         setReplies((prev) => [
           ...prev,
@@ -358,10 +360,11 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           .insert({
             post_id: postId,
             author_id: currentUserId,
+            receiver_id: receiverId,
             reply_to_id: replyToId ?? null,
             content,
           })
-          .select('id, post_id, author_id, reply_to_id, content, created_at')
+          .select('id, post_id, author_id, receiver_id, reply_to_id, content, created_at')
           .single();
         if (error) throw error;
         if (!data) throw new Error('No reply was returned after sending.');

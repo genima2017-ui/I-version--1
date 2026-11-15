@@ -268,6 +268,7 @@ export function PostCard({
             <div className="mt-5 animate-fade-in rounded-2xl bg-paper-200/70 p-4">
               <PrivateRepliesList
                 postId={post.id}
+                receiverId={post.authorId}
                 replies={privateReplies}
                 highlightReplyId={highlightReplyId}
               />
