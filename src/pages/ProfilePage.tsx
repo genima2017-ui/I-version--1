@@ -75,11 +75,10 @@ export function ProfilePage({
 
     const loadProfilePosts = async () => {
       try {
-        let query = client
+        const query = client
           .from('posts')
           .select('*, profiles(username, full_name, bio, avatar_url)')
           .eq('user_id', profileUserId);
-        if (!isOwn) query = query.eq('is_hidden', false);
 
         const { data, error } = await query.order('created_at', { ascending: false });
         if (error) throw error;
@@ -139,9 +138,9 @@ export function ProfilePage({
     );
   }
 
-  const userPosts = remotePosts ?? posts.filter(
-    (post) => post.authorId === socialUserId && (!post.isHidden || isOwn),
-  );
+  const userPosts = remotePosts
+    ? remotePosts.filter((post) => !post.isHidden || isOwn)
+    : posts.filter((post) => post.authorId === socialUserId && (!post.isHidden || isOwn));
   const followUsers =
     followList === 'following'
       ? getFollowing(socialUserId)

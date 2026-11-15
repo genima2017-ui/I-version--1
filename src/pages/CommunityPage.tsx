@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ME_ID } from '@/data/mockData';
 import { useSocial } from '@/state/SocialContext';
 import { supabase } from '@/supabase';
 import { PostCard } from '@/components/PostCard';
@@ -25,7 +26,7 @@ interface PostRow {
 }
 
 export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPageProps) {
-  const { isFollowing } = useSocial();
+  const { isFollowing, getUser } = useSocial();
   const [tab, setTab] = useState<FeedTab>('following');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,27 +46,42 @@ export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPagePro
         .select('*')
         .order('created_at', { ascending: false });
       console.log('拉到的动态:', data);
+      if (error) console.error(error);
       if (error) throw error;
 
       const rows = (data ?? []) as unknown as PostRow[];
-      const loadedPosts: Post[] = rows.map((row) => ({
+      const loadedPosts: Post[] = rows.map((row) => {
+        const authorId = String(row.user_id);
+        const cachedAuthor =
+          getUser(authorId) ?? (authorId === currentUserId ? getUser(ME_ID) : undefined);
+        const author = cachedAuthor ?? {
+          id: authorId,
+          name: '匿名用户',
+          username: `user_${authorId.slice(0, 8)}`,
+          bio: '',
+        };
+
+        return {
           id: String(row.id),
-          authorId: String(row.user_id),
+          authorId,
           content: row.content,
           createdAt: row.created_at,
           likesCount: row.likes_count ?? 0,
           isHidden: row.is_hidden ?? false,
-        }));
+          author,
+        };
+      });
 
       setPosts(loadedPosts);
       setLoadError('');
     } catch (error: unknown) {
       console.error(error);
+      console.error('[Community] failed to load posts', error);
       setLoadError(error instanceof Error ? error.message : 'Unable to load posts.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUserId, getUser]);
 
   useEffect(() => {
     console.log('正在请求 Supabase...');
@@ -74,9 +90,7 @@ export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPagePro
 
   const visiblePosts = useMemo(() => {
     const availablePosts = posts.filter((post) => !post.isHidden || post.authorId === currentUserId);
-    if (tab === 'discover') {
-      return availablePosts;
-    }
+    if (tab === 'discover') return availablePosts;
     return availablePosts.filter(
       (post) => post.authorId === currentUserId || isFollowing(post.authorId),
     );
@@ -128,7 +142,9 @@ export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPagePro
                 currentUserId={currentUserId}
                 isPersisted
                 onPostUpdated={(postId, patch) =>
-                  setPosts((prev) => prev.map((item) => (item.id === postId ? { ...item, ...patch } : item)))
+                  setPosts((prev) =>
+                    prev.map((item) => (item.id === postId ? { ...item, ...patch } : item)),
+                  )
                 }
                 onPostDeleted={(postId) =>
                   setPosts((prev) => prev.filter((item) => item.id !== postId))
