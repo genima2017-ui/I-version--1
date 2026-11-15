@@ -16,6 +16,7 @@ export function PrivateReplyModal({ postId, authorId, onClose }: PrivateReplyMod
   const { getUser, addPrivateReply } = useSocial();
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState('');
   const author = getUser(authorId);
   const trimmed = draft.trim();
 
@@ -23,9 +24,14 @@ export function PrivateReplyModal({ postId, authorId, onClose }: PrivateReplyMod
     event.preventDefault();
     if (!trimmed || isSending) return;
     setIsSending(true);
+    setSendError('');
     const sent = await addPrivateReply(postId, trimmed);
     setIsSending(false);
-    if (sent) onClose();
+    if (sent) {
+      onClose();
+    } else {
+      setSendError('Unable to send this private reply. Please try again or contact the administrator.');
+    }
   };
 
   return (
@@ -44,7 +50,10 @@ export function PrivateReplyModal({ postId, authorId, onClose }: PrivateReplyMod
           <div className="relative">
             <textarea
               value={draft}
-              onChange={(event) => setDraft(event.target.value.slice(0, MAX_LENGTH))}
+              onChange={(event) => {
+                setDraft(event.target.value.slice(0, MAX_LENGTH));
+                setSendError('');
+              }}
               rows={5}
               aria-label="Private reply"
               autoFocus
@@ -67,6 +76,11 @@ export function PrivateReplyModal({ postId, authorId, onClose }: PrivateReplyMod
               </svg>
             )}
           </div>
+          {sendError && (
+            <p role="alert" className="text-sm text-red-700">
+              {sendError}
+            </p>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-xs tabular-nums text-charcoal-500">
               {MAX_LENGTH - draft.length} left

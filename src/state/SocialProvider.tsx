@@ -352,33 +352,36 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         return true;
       }
 
-      const { data, error } = await supabase
-        .from('private_replies')
-        .insert({
-          post_id: postId,
-          author_id: currentUserId,
-          reply_to_id: replyToId ?? null,
-          content,
-        })
-        .select('id, post_id, author_id, reply_to_id, content, created_at')
-        .single();
-      if (error || !data) {
+      try {
+        const { data, error } = await supabase
+          .from('private_replies')
+          .insert({
+            post_id: postId,
+            author_id: currentUserId,
+            reply_to_id: replyToId ?? null,
+            content,
+          })
+          .select('id, post_id, author_id, reply_to_id, content, created_at')
+          .single();
+        if (error) throw error;
+        if (!data) throw new Error('No reply was returned after sending.');
+
+        setReplies((prev) => [
+          ...prev,
+          {
+            id: String(data.id),
+            postId: String(data.post_id),
+            authorId: data.author_id,
+            replyToId: data.reply_to_id ?? undefined,
+            content: data.content,
+            createdAt: data.created_at,
+          },
+        ]);
+        return true;
+      } catch (error) {
         console.error('[Replies] failed to send private reply', error);
         return false;
       }
-
-      setReplies((prev) => [
-        ...prev,
-        {
-          id: String(data.id),
-          postId: String(data.post_id),
-          authorId: data.author_id,
-          replyToId: data.reply_to_id ?? undefined,
-          content: data.content,
-          createdAt: data.created_at,
-        },
-      ]);
-      return true;
     },
     [currentUserId],
   );

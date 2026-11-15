@@ -18,6 +18,7 @@ export function PrivateRepliesList({ postId, replies, highlightReplyId }: Privat
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState('');
   const sendTimer = useRef<number | null>(null);
 
   useEffect(
@@ -32,11 +33,14 @@ export function PrivateRepliesList({ postId, replies, highlightReplyId }: Privat
     const content = draft.trim();
     if (!content || isSending) return;
     setIsSending(true);
+    setSendError('');
     sendTimer.current = window.setTimeout(() => {
       void addPrivateReply(postId, content, replyId).then((sent) => {
         if (sent) {
           setDraft('');
           setReplyingTo(null);
+        } else {
+          setSendError('Unable to send this reply. Please try again or contact the administrator.');
         }
         setIsSending(false);
         sendTimer.current = null;
@@ -130,12 +134,20 @@ export function PrivateRepliesList({ postId, replies, highlightReplyId }: Privat
                   <textarea
                     id={`reply-${reply.id}`}
                     value={draft}
-                    onChange={(event) => setDraft(event.target.value.slice(0, 800))}
+                    onChange={(event) => {
+                      setDraft(event.target.value.slice(0, 800));
+                      setSendError('');
+                    }}
                     rows={2}
                     autoFocus
                     disabled={isSending}
                     className="w-full resize-none rounded-lg border border-fog-300 bg-paper-100 px-3 py-2 text-sm text-charcoal-900 focus:border-charcoal-500 focus:outline-none"
                   />
+                  {sendError && (
+                    <p role="alert" className="mt-2 text-xs text-red-700">
+                      {sendError}
+                    </p>
+                  )}
                   <div className="mt-2 flex justify-end gap-2">
                     <button
                       type="button"
