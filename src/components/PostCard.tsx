@@ -62,8 +62,14 @@ export function PostCard({
   const privateReplies = isOwn ? getPrivateReplies(post.id) : [];
   const postNotes = isOwn ? getPostNotes(post.id) : [];
 
-  const handleLike = () => {
-    toggleLike(post.id);
+  const [likePending, setLikePending] = useState(false);
+
+  const handleLike = async () => {
+    if (likePending) return;
+    setLikePending(true);
+    const changed = await toggleLike(post.id);
+    setLikePending(false);
+    if (!changed) return;
     setLikePulse((count) => count + 1);
   };
 
@@ -167,7 +173,8 @@ export function PostCard({
           <div className="mt-6 flex items-center justify-end gap-1">
             <button
               type="button"
-              onClick={handleLike}
+              onClick={() => void handleLike()}
+              disabled={likePending}
               aria-pressed={liked}
               aria-label={liked ? 'Unlike post' : 'Like post'}
               className={`flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm transition duration-200 hover:bg-fog-200/70 ${

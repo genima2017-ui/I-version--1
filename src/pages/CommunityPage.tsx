@@ -26,7 +26,7 @@ interface PostRow {
 }
 
 export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPageProps) {
-  const { isFollowing, getUser } = useSocial();
+  const { isFollowing, getUser, loadPostLikes } = useSocial();
   const [tab, setTab] = useState<FeedTab>('following');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +72,7 @@ export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPagePro
         };
       });
 
+      await loadPostLikes(loadedPosts);
       setPosts(loadedPosts);
       setLoadError('');
     } catch (error: unknown) {
@@ -81,7 +82,7 @@ export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPagePro
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, getUser]);
+  }, [currentUserId, getUser, loadPostLikes]);
 
   useEffect(() => {
     console.log('正在请求 Supabase...');

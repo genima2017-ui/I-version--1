@@ -14,7 +14,8 @@ export interface SocialContextValue {
   cacheUsers: (users: User[]) => void;
   isLiked: (postId: string) => boolean;
   likeCount: (postId: string) => number;
-  toggleLike: (postId: string) => void;
+  loadPostLikes: (posts: Pick<Post, 'id' | 'likesCount'>[]) => Promise<void>;
+  toggleLike: (postId: string) => Promise<boolean>;
   isFollowing: (userId: string) => boolean;
   toggleFollow: (userId: string) => Promise<boolean>;
   followingCount: (userId: string) => number;

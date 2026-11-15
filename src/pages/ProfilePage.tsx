@@ -49,6 +49,7 @@ export function ProfilePage({
     getFollowing,
     getFollowers,
     hasUnreadInboxItems,
+    loadPostLikes,
   } = useSocial();
   const [editing, setEditing] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -108,6 +109,7 @@ export function ProfilePage({
           };
         });
 
+        await loadPostLikes(profilePosts);
         if (active) {
           cacheUsers(profilePosts.flatMap((post) => (post.author ? [post.author] : [])));
           setRemotePosts(profilePosts);
@@ -128,7 +130,7 @@ export function ProfilePage({
     return () => {
       active = false;
     };
-  }, [cacheUsers, isOwn, profileUserId]);
+  }, [cacheUsers, isOwn, loadPostLikes, profileUserId]);
 
   if (!user) {
     return (

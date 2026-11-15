@@ -40,6 +40,17 @@ interface PrivateReplyRow {
   posts: { user_id: string; content: string } | { user_id: string; content: string }[];
 }
 
+interface PrivateReplyEventRow {
+  id: string | number;
+  post_id: string | number;
+  author_id: string;
+  reply_to_id: string | null;
+  content: string;
+  created_at: string;
+  is_read: boolean;
+  receiver_id: string;
+}
+
 interface FollowRow {
   follower_id: string;
   following_id: string;
@@ -51,6 +62,11 @@ interface ProfileRow {
   full_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+}
+
+interface PostLikeRow {
+  post_id: string | number;
+  user_id: string;
 }
 
 const newestInboxFirst = (left: InboxItem, right: InboxItem) =>
@@ -83,6 +99,16 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       setDirectMessages(userId ? [] : INITIAL_DIRECT_MESSAGES);
       setReplies(userId ? [] : INITIAL_REPLIES);
       setFollows(userId ? {} : INITIAL_FOLLOWS);
+      setPostLikes(
+        userId
+          ? {}
+          : Object.fromEntries(
+              INITIAL_POSTS.map((post) => {
+                const isLiked = INITIAL_LIKED_POST_IDS.includes(post.id);
+                return [post.id, { isLiked, count: isLiked ? 1 : 0 }];
+              }),
+            ),
+      );
     },
     [currentUserId],
   );
@@ -144,16 +170,18 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         if (!active) return;
 
         const rows = (data ?? []) as unknown as PrivateReplyRow[];
-        setReplies(
-          rows.map((row) => ({
+        setReplies((previous) => {
+          const repliesById = new Map(previous.map((reply) => [reply.id, reply]));
+          rows.forEach((row) => repliesById.set(String(row.id), {
             id: String(row.id),
             postId: String(row.post_id),
             authorId: row.author_id,
             replyToId: row.reply_to_id ?? undefined,
             content: row.content,
             createdAt: row.created_at,
-          })),
-        );
+          }));
+          return [...repliesById.values()];
+        });
         const commentItems = rows
           .filter((row) => row.author_id !== currentUserId)
           .map<InboxItem>((row) => ({
@@ -166,11 +194,16 @@ export function SocialProvider({ children }: { children: ReactNode }) {
             createdAt: row.created_at,
             isRead: row.is_read,
           }));
-        setInboxItems((previous) =>
-          [...previous.filter((item) => item.category !== 'comments'), ...commentItems].sort(
-            newestInboxFirst,
-          ),
-        );
+        setInboxItems((previous) => {
+          const commentsById = new Map(
+            previous.filter((item) => item.category === 'comments').map((item) => [item.id, item]),
+          );
+          commentItems.forEach((item) => commentsById.set(item.id, item));
+          return [
+            ...previous.filter((item) => item.category !== 'comments'),
+            ...commentsById.values(),
+          ].sort(newestInboxFirst);
+        });
       } catch (error) {
         console.error('[Inbox] failed to load private replies', error);
       }
@@ -180,6 +213,65 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     void loadReplies();
     return () => {
       active = false;
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId || !supabase) return;
+
+    const channel = supabase
+      .channel(`private-replies-inbox-${currentUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'private_replies',
+          filter: `receiver_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const row = payload.new as unknown as PrivateReplyEventRow;
+          const replyId = String(row.id);
+          const postId = String(row.post_id);
+          const reply: PrivateReply = {
+            id: replyId,
+            postId,
+            authorId: row.author_id,
+            replyToId: row.reply_to_id ?? undefined,
+            content: row.content,
+            createdAt: row.created_at,
+          };
+
+          setReplies((previous) =>
+            previous.some((item) => item.id === replyId) ? previous : [...previous, reply],
+          );
+
+          if (row.author_id === currentUserId) return;
+          const inboxItem: InboxItem = {
+            id: `reply-${replyId}`,
+            category: 'comments',
+            content: row.content,
+            senderId: row.author_id,
+            postId,
+            replyId,
+            createdAt: row.created_at,
+            isRead: row.is_read,
+          };
+          setInboxItems((previous) =>
+            previous.some((item) => item.id === inboxItem.id)
+              ? previous
+              : [...previous, inboxItem].sort(newestInboxFirst),
+          );
+        },
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('[Inbox] failed to subscribe to private replies', status);
+        }
+      });
+
+    return () => {
+      void supabase?.removeChannel(channel);
     };
   }, [currentUserId]);
 
@@ -245,21 +337,130 @@ export function SocialProvider({ children }: { children: ReactNode }) {
 
   const isLiked = useCallback((postId: string) => postLikes[postId]?.isLiked ?? false, [postLikes]);
 
-  const likeCount = useCallback((postId: string) => postLikes[postId]?.count ?? 0, [postLikes]);
+  const likeCount = useCallback(
+    (postId: string) =>
+      postLikes[postId]?.count ?? posts.find((post) => post.id === postId)?.likesCount ?? 0,
+    [postLikes, posts],
+  );
 
-  const toggleLike = useCallback((postId: string) => {
-    setPostLikes((prev) => {
-      const current = prev[postId] ?? { isLiked: false, count: 0 };
-      const nextIsLiked = !current.isLiked;
-      return {
-        ...prev,
-        [postId]: {
-          isLiked: nextIsLiked,
-          count: Math.max(0, current.count + (nextIsLiked ? 1 : -1)),
+  const loadPostLikes = useCallback(
+    async (postRows: Pick<Post, 'id' | 'likesCount'>[]) => {
+      if (postRows.length === 0) return;
+      const postIds = postRows.map((post) => post.id);
+      const fallback = Object.fromEntries(
+        postRows.map((post) => [post.id, { isLiked: false, count: post.likesCount ?? 0 }]),
+      );
+
+      if (!currentUserId || !supabase) {
+        setPostLikes((previous) => ({ ...previous, ...fallback }));
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('post_likes')
+          .select('post_id, user_id')
+          .in('post_id', postIds);
+        if (error) throw error;
+
+        const likes = (data ?? []) as unknown as PostLikeRow[];
+        const next = { ...fallback };
+        for (const like of likes) {
+          const postId = String(like.post_id);
+          const current = next[postId] ?? { isLiked: false, count: 0 };
+          next[postId] = {
+            isLiked: current.isLiked || like.user_id === currentUserId,
+            count: current.count + 1,
+          };
+        }
+        setPostLikes((previous) => ({ ...previous, ...next }));
+      } catch (error) {
+        console.error('[Likes] failed to load post likes', error);
+        setPostLikes((previous) => ({ ...previous, ...fallback }));
+      }
+    },
+    [currentUserId],
+  );
+
+  const toggleLike = useCallback(
+    async (postId: string) => {
+      if (currentUserId && supabase) {
+        const alreadyLiked = postLikes[postId]?.isLiked ?? false;
+        try {
+          const result = alreadyLiked
+            ? await supabase
+                .from('post_likes')
+                .delete()
+                .eq('post_id', postId)
+                .eq('user_id', currentUserId)
+            : await supabase
+                .from('post_likes')
+                .insert({ post_id: postId, user_id: currentUserId });
+          if (result.error) throw result.error;
+
+          setPostLikes((previous) => {
+            const current = previous[postId] ?? { isLiked: false, count: 0 };
+            return {
+              ...previous,
+              [postId]: {
+                isLiked: !alreadyLiked,
+                count: Math.max(0, current.count + (alreadyLiked ? -1 : 1)),
+              },
+            };
+          });
+          return true;
+        } catch (error) {
+          console.error('[Likes] failed to update post like', error);
+          return false;
+        }
+      }
+
+      setPostLikes((previous) => {
+        const current = previous[postId] ?? { isLiked: false, count: 0 };
+        const nextIsLiked = !current.isLiked;
+        return {
+          ...previous,
+          [postId]: {
+            isLiked: nextIsLiked,
+            count: Math.max(0, current.count + (nextIsLiked ? 1 : -1)),
+          },
+        };
+      });
+      return true;
+    },
+    [currentUserId, postLikes],
+  );
+
+  useEffect(() => {
+    if (!currentUserId || !supabase) return;
+    const channel = supabase
+      .channel('post-likes-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'post_likes' },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Partial<PostLikeRow>;
+          const postId = String(row.post_id ?? '');
+          if (!postId || row.user_id === currentUserId) return;
+
+          setPostLikes((previous) => {
+            const current = previous[postId];
+            if (!current) return previous;
+            const change = payload.eventType === 'INSERT' ? 1 : payload.eventType === 'DELETE' ? -1 : 0;
+            if (change === 0) return previous;
+            return {
+              ...previous,
+              [postId]: { ...current, count: Math.max(0, current.count + change) },
+            };
+          });
         },
-      };
-    });
-  }, []);
+      )
+      .subscribe();
+
+    return () => {
+      void supabase?.removeChannel(channel);
+    };
+  }, [currentUserId]);
 
   const isFollowing = useCallback(
     (userId: string) => (follows[currentUserId ?? ME_ID] ?? []).includes(userId),
@@ -534,6 +735,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       cacheUsers,
       isLiked,
       likeCount,
+      loadPostLikes,
       toggleLike,
       isFollowing,
       toggleFollow,
@@ -565,6 +767,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       cacheUsers,
       isLiked,
       likeCount,
+      loadPostLikes,
       toggleLike,
       isFollowing,
       toggleFollow,
