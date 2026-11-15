@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ChevronDown, ChevronUp, Heart, Plus, Send } from 'lucide-react';
+import { ChevronDown, ChevronUp, Heart, Lock, Pencil, Plus, Send } from 'lucide-react';
 import { ME_ID } from '@/data/mockData';
 import { useSocial } from '@/state/SocialContext';
 import { formatTimeAgo } from '@/lib/time';
 import { Avatar } from '@/components/Avatar';
 import { PrivateReplyModal } from '@/components/PrivateReplyModal';
+import { PostManagementModal } from '@/components/PostManagementModal';
 import { PrivateRepliesList } from '@/components/PrivateRepliesList';
 import type { Post } from '@/types';
 
@@ -12,9 +13,21 @@ interface PostCardProps {
   post: Post;
   onOpenProfile: (userId: string) => void;
   highlightReplyId?: string;
+  currentUserId?: string;
+  isPersisted?: boolean;
+  onPostUpdated?: (postId: string, patch: Partial<Pick<Post, 'content' | 'isHidden'>>) => void;
+  onPostDeleted?: (postId: string) => void;
 }
 
-export function PostCard({ post, onOpenProfile, highlightReplyId }: PostCardProps) {
+export function PostCard({
+  post,
+  onOpenProfile,
+  highlightReplyId,
+  currentUserId,
+  isPersisted = false,
+  onPostUpdated,
+  onPostDeleted,
+}: PostCardProps) {
   const {
     getUser,
     isLiked,
@@ -28,6 +41,7 @@ export function PostCard({ post, onOpenProfile, highlightReplyId }: PostCardProp
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [noteComposerOpen, setNoteComposerOpen] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(false);
+  const [postManagerOpen, setPostManagerOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [likePulse, setLikePulse] = useState(0);
 
@@ -35,10 +49,10 @@ export function PostCard({ post, onOpenProfile, highlightReplyId }: PostCardProp
     if (highlightReplyId) setRepliesOpen(true);
   }, [highlightReplyId]);
 
-  const author = getUser(post.authorId);
+  const author = post.author ?? getUser(post.authorId);
   if (!author) return null;
 
-  const isOwn = post.authorId === ME_ID;
+  const isOwn = post.authorId === (currentUserId ?? ME_ID);
   const liked = isLiked(post.id);
   const privateReplies = isOwn ? getPrivateReplies(post.id) : [];
   const postNotes = isOwn ? getPostNotes(post.id) : [];
@@ -221,6 +235,28 @@ export function PostCard({ post, onOpenProfile, highlightReplyId }: PostCardProp
               </button>
             )}
 
+              {isOwn && (
+                <button
+                  type="button"
+                  onClick={() => setPostManagerOpen(true)}
+                  aria-label="Edit, hide or delete post"
+                  title="Edit post"
+                  className="rounded-full px-2.5 py-1.5 text-charcoal-500 transition hover:bg-fog-200/70 hover:text-charcoal-900"
+                >
+                  <Pencil aria-hidden="true" className="h-4 w-4" />
+                </button>
+              )}
+
+              {isOwn && post.isHidden && (
+                <span
+                  aria-label="Hidden from others"
+                  title="Hidden from others"
+                  className="flex h-8 w-8 items-center justify-center text-charcoal-600"
+                >
+                  <Lock aria-hidden="true" className="h-4 w-4" />
+                </span>
+              )}
+
           </div>
 
           {isOwn && repliesOpen && (
@@ -239,6 +275,17 @@ export function PostCard({ post, onOpenProfile, highlightReplyId }: PostCardProp
           postId={post.id}
           authorId={post.authorId}
           onClose={() => setReplyOpen(false)}
+        />
+      )}
+      {postManagerOpen && (
+        <PostManagementModal
+          post={post}
+          notes={postNotes}
+          currentUserId={currentUserId ?? ME_ID}
+          persisted={isPersisted}
+          onClose={() => setPostManagerOpen(false)}
+          onPostUpdated={onPostUpdated}
+          onPostDeleted={onPostDeleted}
         />
       )}
     </article>

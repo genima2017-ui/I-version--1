@@ -42,7 +42,9 @@ export function ProfilePage({ userId, onOpenProfile, onOpenPost, targetPost }: P
   }
 
   const isOwn = userId === ME_ID;
-  const userPosts = posts.filter((post) => post.authorId === userId);
+  const userPosts = posts.filter(
+    (post) => post.authorId === userId && (!post.isHidden || userId === ME_ID),
+  );
   const followUsers =
     followList === 'following'
       ? getFollowing(userId)

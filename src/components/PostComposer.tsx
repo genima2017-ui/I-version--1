@@ -1,22 +1,55 @@
 import { useState, type FormEvent } from 'react';
 import { ME_ID } from '@/data/mockData';
 import { useSocial } from '@/state/SocialContext';
+import { supabase } from '@/supabase';
 import { Avatar } from '@/components/Avatar';
 
 const MAX_LENGTH = 500;
 
-export function PostComposer() {
-  const { getUser, createPost } = useSocial();
+interface PostComposerProps {
+  onPublished: () => void;
+}
+
+export function PostComposer({ onPublished }: PostComposerProps) {
+  const { getUser } = useSocial();
   const [draft, setDraft] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const me = getUser(ME_ID);
   const trimmed = draft.trim();
   const remaining = MAX_LENGTH - draft.length;
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!trimmed) return;
-    createPost(trimmed);
-    setDraft('');
+    if (!trimmed || publishing) return;
+    if (!supabase) {
+      setErrorMessage('Supabase is not configured.');
+      return;
+    }
+
+    setPublishing(true);
+    setErrorMessage('');
+    try {
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!data.user) throw new Error('Please sign in again to publish.');
+
+      const { error } = await supabase.from('posts').insert({
+        content: trimmed,
+        user_id: data.user.id,
+        likes_count: 0,
+      });
+      if (error) throw error;
+
+      setDraft('');
+      console.info('[PostComposer] post published');
+      onPublished();
+    } catch (error: unknown) {
+      console.error('[PostComposer] failed to publish post', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to publish post.');
+    } finally {
+      setPublishing(false);
+    }
   };
 
   if (!me) return null;
@@ -47,12 +80,17 @@ export function PostComposer() {
             </span>
             <button
               type="submit"
-              disabled={!trimmed}
+              disabled={!trimmed || publishing || !supabase}
               className="liquid-publish-button rounded-full px-5 py-2 text-sm font-medium disabled:cursor-not-allowed"
             >
-              Publish
+              {publishing ? 'Publishing…' : 'Publish'}
             </button>
           </div>
+          {errorMessage && (
+            <p role="alert" className="mt-3 text-xs text-charcoal-600">
+              {errorMessage}
+            </p>
+          )}
         </div>
       </div>
     </form>

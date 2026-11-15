@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Smile } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { supabase } from '../supabase'; // 确保路径正确
 
 export function AuthPage() {
@@ -23,9 +23,26 @@ export function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setMessage('注册成功！请检查你的邮箱进行验证，或直接尝试登录。');
+
+        if (data.user && data.session) {
+          const username = email.trim().split('@')[0] || `member-${data.user.id.slice(0, 8)}`;
+          const { error: profileError } = await supabase.from('profiles').upsert(
+            {
+              id: data.user.id,
+              username,
+              full_name: username,
+              bio: '',
+              avatar_url: null,
+            },
+            { onConflict: 'id' },
+          );
+          if (profileError) throw profileError;
+          setMessage('注册成功，个人资料已创建。');
+        } else {
+          setMessage('注册成功！请先验证邮箱，首次登录时会自动创建个人资料。');
+        }
       }
     } catch (error: unknown) {
       setMessage(error instanceof Error ? error.message : '发生错误，请重试');
@@ -38,8 +55,8 @@ export function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#f8f9fa] px-4">
       <div className="max-w-md w-full bg-white p-10 rounded-3xl shadow-sm border border-gray-100">
         <div className="mb-8 flex justify-center text-gray-700">
-          <Smile
-            aria-label="笑脸"
+          <Sparkles
+            aria-label="Sparkles"
             role="img"
             className="auth-smile-float h-10 w-10"
             strokeWidth={1.5}

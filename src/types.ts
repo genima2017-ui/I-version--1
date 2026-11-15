@@ -11,6 +11,9 @@ export interface Post {
   authorId: string;
   content: string;
   createdAt: string;
+  author?: User;
+  likesCount?: number;
+  isHidden?: boolean;
 }
 
 export interface PrivateReply {

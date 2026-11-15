@@ -8,9 +8,11 @@ import { SideNav } from '@/components/SideNav';
 import { CommunityPage } from '@/pages/CommunityPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { TogetherPage } from '@/pages/TogetherPage';
+import { useSocial } from '@/state/SocialContext';
 import type { Page } from '@/types';
 
 export default function App() {
+  const { updateProfile } = useSocial();
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState<Page>('community');
@@ -50,6 +52,59 @@ export default function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!session || !supabase) return;
+    const client = supabase;
+    let active = true;
+
+    const syncProfile = async () => {
+      try {
+        const { data, error } = await client
+          .from('profiles')
+          .select('username, full_name, bio, avatar_url')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (error) throw error;
+
+        let profile = data;
+        if (!profile) {
+          const username = session.user.email?.split('@')[0] || `member-${session.user.id.slice(0, 8)}`;
+          const { data: createdProfile, error: createError } = await client
+            .from('profiles')
+            .upsert(
+              {
+                id: session.user.id,
+                username,
+                full_name: username,
+                bio: '',
+                avatar_url: null,
+              },
+              { onConflict: 'id' },
+            )
+            .select('username, full_name, bio, avatar_url')
+            .single();
+          if (createError) throw createError;
+          profile = createdProfile;
+        }
+
+        if (!active || !profile) return;
+        updateProfile({
+          username: profile.username,
+          name: profile.full_name || profile.username,
+          bio: profile.bio ?? '',
+          avatarUrl: profile.avatar_url ?? undefined,
+        });
+      } catch (error) {
+        console.error('[Auth] failed to load profile', error);
+      }
+    };
+
+    void syncProfile();
+    return () => {
+      active = false;
+    };
+  }, [session, updateProfile]);
 
   const navigate = useCallback((next: Page) => {
     if (next === 'profile') setProfileId(ME_ID);
@@ -127,7 +182,9 @@ export default function App() {
       <SideNav page={page} onNavigate={navigate} />
       <main className="min-w-0 w-full max-w-full overflow-x-hidden px-5 pb-28 pt-10 sm:px-8 sm:pt-14 lg:pb-20 lg:pl-72 lg:pr-12">
         <div key={`${page}-${profileId}`} className="glacier-page-flow mx-auto w-full min-w-0 max-w-xl">
-          {page === 'community' && <CommunityPage onOpenProfile={openProfile} />}
+          {page === 'community' && (
+            <CommunityPage onOpenProfile={openProfile} currentUserId={session.user.id} />
+          )}
           {page === 'profile' && (
             <ProfilePage
               key={profileId}

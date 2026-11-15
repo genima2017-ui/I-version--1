@@ -39,6 +39,14 @@ export function SocialProvider({ children }: { children: ReactNode }) {
 
   const getUser = useCallback((id: string) => users.find((user) => user.id === id), [users]);
 
+  const cacheUsers = useCallback((incomingUsers: User[]) => {
+    setUsers((prev) => {
+      const usersById = new Map(prev.map((user) => [user.id, user]));
+      incomingUsers.forEach((user) => usersById.set(user.id, { ...usersById.get(user.id), ...user }));
+      return [...usersById.values()];
+    });
+  }, []);
+
   const isLiked = useCallback((postId: string) => postLikes[postId]?.isLiked ?? false, [postLikes]);
 
   const likeCount = useCallback((postId: string) => postLikes[postId]?.count ?? 0, [postLikes]);
@@ -135,11 +143,39 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     ]);
   }, []);
 
+  const updatePostNote = useCallback((noteId: string, content: string) => {
+    setPostNotes((prev) =>
+      prev.map((note) => (note.id === noteId ? { ...note, content } : note)),
+    );
+  }, []);
+
+  const deletePostNote = useCallback((noteId: string) => {
+    setPostNotes((prev) => prev.filter((note) => note.id !== noteId));
+  }, []);
+
   const createPost = useCallback((content: string) => {
     setPosts((prev) => [
       { id: createId(), authorId: ME_ID, content, createdAt: new Date().toISOString() },
       ...prev,
     ]);
+  }, []);
+
+  const updatePost = useCallback(
+    (postId: string, patch: Partial<Pick<Post, 'content' | 'isHidden'>>) => {
+      setPosts((prev) => prev.map((post) => (post.id === postId ? { ...post, ...patch } : post)));
+    },
+    [],
+  );
+
+  const deletePost = useCallback((postId: string) => {
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+    setPostNotes((prev) => prev.filter((note) => note.postId !== postId));
+    setReplies((prev) => prev.filter((reply) => reply.postId !== postId));
+    setPostLikes((prev) => {
+      const next = { ...prev };
+      delete next[postId];
+      return next;
+    });
   }, []);
 
   const updateProfile = useCallback((patch: Pick<User, 'name' | 'username' | 'bio' | 'avatarUrl'>) => {
@@ -177,6 +213,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       sendDirectMessage,
       hasUnreadInboxItems: inboxItems.some((item) => !item.isRead),
       getUser,
+      cacheUsers,
       isLiked,
       likeCount,
       toggleLike,
@@ -190,7 +227,11 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       addPrivateReply,
       getPostNotes,
       addPostNote,
+      updatePostNote,
+      deletePostNote,
       createPost,
+      updatePost,
+      deletePost,
       updateProfile,
       markAllInboxItemsRead,
     }),
@@ -201,6 +242,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       getDirectMessages,
       sendDirectMessage,
       getUser,
+      cacheUsers,
       isLiked,
       likeCount,
       toggleLike,
@@ -214,7 +256,11 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       addPrivateReply,
       getPostNotes,
       addPostNote,
+      updatePostNote,
+      deletePostNote,
       createPost,
+      updatePost,
+      deletePost,
       updateProfile,
       markAllInboxItemsRead,
     ],

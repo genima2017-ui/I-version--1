@@ -9,6 +9,7 @@ export interface SocialContextValue {
   sendDirectMessage: (participantId: string, content: string) => void;
   hasUnreadInboxItems: boolean;
   getUser: (id: string) => User | undefined;
+  cacheUsers: (users: User[]) => void;
   isLiked: (postId: string) => boolean;
   likeCount: (postId: string) => number;
   toggleLike: (postId: string) => void;
@@ -22,7 +23,11 @@ export interface SocialContextValue {
   addPrivateReply: (postId: string, content: string, replyToId?: string) => void;
   getPostNotes: (postId: string) => PostNote[];
   addPostNote: (postId: string, content: string) => void;
+  updatePostNote: (noteId: string, content: string) => void;
+  deletePostNote: (noteId: string) => void;
   createPost: (content: string) => void;
+  updatePost: (postId: string, patch: Partial<Pick<Post, 'content' | 'isHidden'>>) => void;
+  deletePost: (postId: string) => void;
   updateProfile: (patch: Pick<User, 'name' | 'username' | 'bio' | 'avatarUrl'>) => void;
   markAllInboxItemsRead: () => void;
 }
