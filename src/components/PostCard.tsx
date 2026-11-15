@@ -49,10 +49,15 @@ export function PostCard({
     if (highlightReplyId) setRepliesOpen(true);
   }, [highlightReplyId]);
 
-  const author = post.author ?? getUser(post.authorId);
-  if (!author) return null;
-
   const isOwn = post.authorId === (currentUserId ?? ME_ID);
+  const author = getUser(isOwn ? ME_ID : post.authorId) ?? post.author;
+  const postAuthor = author ?? {
+    id: post.authorId,
+    name: '匿名用户',
+    username: 'anonymous',
+    bio: '',
+  };
+
   const liked = isLiked(post.id);
   const privateReplies = isOwn ? getPrivateReplies(post.id) : [];
   const postNotes = isOwn ? getPostNotes(post.id) : [];
@@ -78,20 +83,20 @@ export function PostCard({
           <header className="flex min-w-0 items-center gap-x-2">
             <button
               type="button"
-              onClick={() => onOpenProfile(author.id)}
+              onClick={() => onOpenProfile(postAuthor.id)}
               className="shrink-0 rounded-full transition hover:opacity-80"
-              aria-label={`View ${author.name}'s profile`}
+              aria-label={`View ${postAuthor.name}'s profile`}
             >
-              <Avatar id={author.id} name={author.name} avatarUrl={author.avatarUrl} />
+              <Avatar id={postAuthor.id} name={postAuthor.name} avatarUrl={postAuthor.avatarUrl} />
             </button>
             <button
               type="button"
-              onClick={() => onOpenProfile(author.id)}
+              onClick={() => onOpenProfile(postAuthor.id)}
               className="max-w-[42%] shrink-0 truncate text-[15px] font-medium text-charcoal-900 hover:underline"
             >
-              {author.name}
+              {postAuthor.name}
             </button>
-            <span className="min-w-0 truncate text-sm text-charcoal-500">@{author.username}</span>
+            <span className="min-w-0 truncate text-sm text-charcoal-500">@{postAuthor.username}</span>
             <span aria-hidden="true" className="shrink-0 text-charcoal-500">
               ·
             </span>

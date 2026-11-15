@@ -3,7 +3,7 @@ import { useSocial } from '@/state/SocialContext';
 import { supabase } from '@/supabase';
 import { PostCard } from '@/components/PostCard';
 import { PostComposer } from '@/components/PostComposer';
-import type { FeedTab, Post, User } from '@/types';
+import type { FeedTab, Post } from '@/types';
 
 const TABS: { id: FeedTab; label: string }[] = [
   { id: 'following', label: 'Following' },
@@ -15,25 +15,17 @@ interface CommunityPageProps {
   currentUserId: string;
 }
 
-interface JoinedProfile {
-  username: string | null;
-  full_name: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-}
-
 interface PostRow {
   id: string;
   user_id: string;
   content: string;
   created_at: string;
-  likes_count: number | null;
-  is_hidden: boolean | null;
-  profiles: JoinedProfile | JoinedProfile[] | null;
+  likes_count?: number | null;
+  is_hidden?: boolean | null;
 }
 
 export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPageProps) {
-  const { isFollowing, cacheUsers } = useSocial();
+  const { isFollowing } = useSocial();
   const [tab, setTab] = useState<FeedTab>('following');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,55 +42,40 @@ export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPagePro
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select('*, profiles(username, full_name, bio, avatar_url)')
-        .or(`is_hidden.eq.false,user_id.eq.${currentUserId}`)
+        .select('*')
         .order('created_at', { ascending: false });
+      console.log('拉到的动态:', data);
       if (error) throw error;
 
       const rows = (data ?? []) as unknown as PostRow[];
-      const loadedPosts = rows.map((row) => {
-        const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-        const authorId = String(row.user_id);
-        const author: User | undefined = profile
-          ? {
-              id: authorId,
-              name: profile.full_name || profile.username || 'Member',
-              username: profile.username || 'member',
-              bio: profile.bio || '',
-              avatarUrl: profile.avatar_url ?? undefined,
-            }
-          : undefined;
-
-        return {
+      const loadedPosts: Post[] = rows.map((row) => ({
           id: String(row.id),
-          authorId,
+          authorId: String(row.user_id),
           content: row.content,
           createdAt: row.created_at,
           likesCount: row.likes_count ?? 0,
           isHidden: row.is_hidden ?? false,
-          author,
-        };
-      });
+        }));
 
-      cacheUsers(loadedPosts.flatMap((post) => (post.author ? [post.author] : [])));
       setPosts(loadedPosts);
       setLoadError('');
     } catch (error: unknown) {
-      console.error('[Community] failed to load posts', error);
+      console.error(error);
       setLoadError(error instanceof Error ? error.message : 'Unable to load posts.');
     } finally {
       setLoading(false);
     }
-  }, [cacheUsers, currentUserId]);
+  }, []);
 
   useEffect(() => {
+    console.log('正在请求 Supabase...');
     void loadPosts();
   }, [loadPosts]);
 
   const visiblePosts = useMemo(() => {
     const availablePosts = posts.filter((post) => !post.isHidden || post.authorId === currentUserId);
     if (tab === 'discover') {
-      return availablePosts.filter((post) => post.authorId !== currentUserId);
+      return availablePosts;
     }
     return availablePosts.filter(
       (post) => post.authorId === currentUserId || isFollowing(post.authorId),

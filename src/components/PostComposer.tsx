@@ -80,7 +80,8 @@ export function PostComposer({ onPublished }: PostComposerProps) {
             </span>
             <button
               type="submit"
-              disabled={!trimmed || publishing || !supabase}
+              onClick={() => console.log('准备发送数据:', trimmed)}
+              disabled={publishing}
               className="liquid-publish-button rounded-full px-5 py-2 text-sm font-medium disabled:cursor-not-allowed"
             >
               {publishing ? 'Publishing…' : 'Publish'}

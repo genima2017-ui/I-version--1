@@ -189,6 +189,7 @@ export default function App() {
             <ProfilePage
               key={profileId}
               userId={profileId}
+              currentUserId={session.user.id}
               onOpenProfile={openProfile}
               onOpenPost={openPost}
               targetPost={targetPost}
