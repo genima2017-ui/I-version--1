@@ -33,11 +33,14 @@ export function PrivateRepliesList({ postId, replies, highlightReplyId }: Privat
     if (!content || isSending) return;
     setIsSending(true);
     sendTimer.current = window.setTimeout(() => {
-      addPrivateReply(postId, content, replyId);
-      setDraft('');
-      setReplyingTo(null);
-      setIsSending(false);
-      sendTimer.current = null;
+      void addPrivateReply(postId, content, replyId).then((sent) => {
+        if (sent) {
+          setDraft('');
+          setReplyingTo(null);
+        }
+        setIsSending(false);
+        sendTimer.current = null;
+      });
     }, 450);
   };
 

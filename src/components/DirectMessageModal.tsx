@@ -15,8 +15,9 @@ interface DirectMessageModalProps {
 }
 
 export function DirectMessageModal({ participantId, onClose }: DirectMessageModalProps) {
-  const { getUser, getDirectMessages, sendDirectMessage } = useSocial();
+  const { currentUserId, getUser, getDirectMessages, sendDirectMessage } = useSocial();
   const [draft, setDraft] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const messageEndRef = useRef<HTMLDivElement>(null);
   const draftInputRef = useRef<HTMLTextAreaElement>(null);
   const participant = getUser(participantId);
@@ -47,10 +48,13 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
     messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!trimmedDraft) return;
-    sendDirectMessage(participantId, trimmedDraft);
+    if (!trimmedDraft || isSending) return;
+    setIsSending(true);
+    const sent = await sendDirectMessage(participantId, trimmedDraft);
+    setIsSending(false);
+    if (!sent) return;
     setDraft('');
     draftInputRef.current?.focus({ preventScroll: true });
   };
@@ -65,7 +69,7 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
         >
           {messageGroups.length > 0 ? (
             messageGroups.map((group) => {
-              const isMine = group[0].senderId === ME_ID;
+              const isMine = group[0].senderId === (currentUserId ?? ME_ID);
               return (
                 <div
                   key={group[0].id}
@@ -134,7 +138,7 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
           />
           <button
             type="submit"
-            disabled={!trimmedDraft}
+            disabled={!trimmedDraft || isSending}
             aria-label="发送私信"
             onMouseDown={(event) => event.preventDefault()}
             className="liquid-send-button box-border flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-charcoal-900 disabled:cursor-not-allowed disabled:saturate-50 disabled:opacity-55"

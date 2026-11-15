@@ -12,12 +12,20 @@ import { useSocial } from '@/state/SocialContext';
 import type { Page } from '@/types';
 
 export default function App() {
-  const { updateProfile } = useSocial();
+  const {
+    updateProfile,
+    currentUserId: socialUserId,
+    setCurrentUserId,
+  } = useSocial();
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState<Page>('community');
   const [profileId, setProfileId] = useState(ME_ID);
   const [targetPost, setTargetPost] = useState<{ postId: string; replyId?: string } | null>(null);
+
+  useEffect(() => {
+    setCurrentUserId(session?.user.id ?? null);
+  }, [session?.user.id, setCurrentUserId]);
 
   useEffect(() => {
     if (!supabase) {
@@ -166,6 +174,16 @@ export default function App() {
   }, [page, profileId, targetPost]);
 
   if (authLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-paper-100 text-charcoal-500">
+        <span className="font-serif text-3xl" aria-label="Loading">
+          I
+        </span>
+      </main>
+    );
+  }
+
+  if (session && socialUserId !== session.user.id) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-paper-100 text-charcoal-500">
         <span className="font-serif text-3xl" aria-label="Loading">

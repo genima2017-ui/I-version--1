@@ -15,14 +15,17 @@ interface PrivateReplyModalProps {
 export function PrivateReplyModal({ postId, authorId, onClose }: PrivateReplyModalProps) {
   const { getUser, addPrivateReply } = useSocial();
   const [draft, setDraft] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const author = getUser(authorId);
   const trimmed = draft.trim();
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!trimmed) return;
-    addPrivateReply(postId, trimmed);
-    onClose();
+    if (!trimmed || isSending) return;
+    setIsSending(true);
+    const sent = await addPrivateReply(postId, trimmed);
+    setIsSending(false);
+    if (sent) onClose();
   };
 
   return (
@@ -78,7 +81,7 @@ export function PrivateReplyModal({ postId, authorId, onClose }: PrivateReplyMod
               </button>
               <button
                 type="submit"
-                disabled={!trimmed}
+                disabled={!trimmed || isSending}
                 className="rounded-full bg-charcoal-900 px-5 py-2 text-sm font-medium text-paper-50 transition hover:bg-charcoal-700 disabled:cursor-not-allowed disabled:bg-fog-300 disabled:text-charcoal-500"
               >
                 Send

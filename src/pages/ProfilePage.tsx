@@ -59,7 +59,7 @@ export function ProfilePage({
   const [postsError, setPostsError] = useState('');
   const isOwn = userId === ME_ID || userId === currentUserId;
   const profileUserId = isOwn ? currentUserId : userId;
-  const socialUserId = isOwn ? ME_ID : userId;
+  const socialUserId = isOwn ? currentUserId : userId;
   const user = getUser(userId) ?? (isOwn ? getUser(ME_ID) : undefined);
 
   useEffect(() => {

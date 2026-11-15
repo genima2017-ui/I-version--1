@@ -2,11 +2,13 @@ import { createContext, useContext } from 'react';
 import type { DirectMessage, InboxItem, Post, PostNote, PrivateReply, User } from '@/types';
 
 export interface SocialContextValue {
+  currentUserId: string | null;
+  setCurrentUserId: (userId: string | null) => void;
   users: User[];
   posts: Post[];
   inboxItems: InboxItem[];
   getDirectMessages: (participantId: string) => DirectMessage[];
-  sendDirectMessage: (participantId: string, content: string) => void;
+  sendDirectMessage: (participantId: string, content: string) => Promise<boolean>;
   hasUnreadInboxItems: boolean;
   getUser: (id: string) => User | undefined;
   cacheUsers: (users: User[]) => void;
@@ -14,13 +16,13 @@ export interface SocialContextValue {
   likeCount: (postId: string) => number;
   toggleLike: (postId: string) => void;
   isFollowing: (userId: string) => boolean;
-  toggleFollow: (userId: string) => void;
+  toggleFollow: (userId: string) => Promise<boolean>;
   followingCount: (userId: string) => number;
   followerCount: (userId: string) => number;
   getFollowing: (userId: string) => User[];
   getFollowers: (userId: string) => User[];
   getPrivateReplies: (postId: string) => PrivateReply[];
-  addPrivateReply: (postId: string, content: string, replyToId?: string) => void;
+  addPrivateReply: (postId: string, content: string, replyToId?: string) => Promise<boolean>;
   getPostNotes: (postId: string) => PostNote[];
   addPostNote: (postId: string, content: string) => void;
   updatePostNote: (noteId: string, content: string) => void;
