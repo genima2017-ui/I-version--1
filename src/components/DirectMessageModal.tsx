@@ -23,6 +23,7 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
   const [isSending, setIsSending] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [readError, setReadError] = useState(false);
   const messageEndRef = useRef<HTMLDivElement>(null);
   const draftInputRef = useRef<HTMLTextAreaElement>(null);
   const participant = getUser(participantId);
@@ -75,8 +76,12 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
   }, [messages.length]);
 
   useEffect(() => {
-    if (hasUnreadMessages) void markConversationRead(participantId);
-  }, [hasUnreadMessages, markConversationRead, participantId]);
+    if (hasUnreadMessages && !readError) {
+      void markConversationRead(participantId).then((success) => {
+        if (!success) setReadError(true);
+      });
+    }
+  }, [hasUnreadMessages, markConversationRead, participantId, readError]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -92,6 +97,11 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
   return (
     <Modal title={participant?.name ?? '私信'} onClose={onClose} fullScreen smoothViewport>
       <div className="box-border flex h-full w-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden bg-white">
+        {readError && (
+          <p role="alert" className="px-4 py-2 text-sm text-red-700">
+            已读状态同步失败，请检查网络后重新打开聊天。
+          </p>
+        )}
         <div
           aria-live="polite"
           aria-label="Conversation messages"

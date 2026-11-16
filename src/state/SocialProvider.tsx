@@ -790,30 +790,38 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       item.category === 'messages' && !item.isRead &&
       (item.senderId ?? 'system') === participantId,
     );
-    if (unreadItems.length === 0) return;
+    if (unreadItems.length === 0) return true;
     const unreadItemIds = new Set(unreadItems.map((item) => item.id));
-    if (currentUserId && supabase) {
-      let query = supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('receiver_id', currentUserId)
-        .eq('is_read', false)
-        .in('id', unreadItems.map((item) => item.id.replace(/^message-/, '')));
-      query = participantId === 'system'
-        ? query.is('sender_id', null)
-        : query.eq('sender_id', participantId);
-      const { error } = await query;
-      if (error) {
-        console.error('[Inbox] failed to mark conversation read', error);
-        return;
-      }
-      if (currentUserIdRef.current !== currentUserId) return;
-    }
     setInboxItems((previous) => previous.map((item) =>
-      unreadItemIds.has(item.id)
-        ? { ...item, isRead: true }
-        : item,
+      unreadItemIds.has(item.id) ? { ...item, isRead: true } : item,
     ));
+    if (currentUserId && supabase) {
+      try {
+        let query = supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('receiver_id', currentUserId)
+          .in('id', unreadItems.map((item) => item.id.replace(/^message-/, '')));
+        query = participantId === 'system'
+          ? query.is('sender_id', null)
+          : query.eq('sender_id', participantId);
+        const { data, error } = await query.select('id');
+        if (error) throw error;
+        if ((data?.length ?? 0) !== unreadItems.length) {
+          throw new Error('Some messages could not be marked as read.');
+        }
+        return true;
+      } catch (error) {
+        console.error('[Inbox] failed to mark conversation read', error);
+        if (currentUserIdRef.current === currentUserId) {
+          setInboxItems((previous) => previous.map((item) =>
+            unreadItemIds.has(item.id) ? { ...item, isRead: false } : item,
+          ));
+        }
+        return false;
+      }
+    }
+    return true;
   }, [currentUserId, inboxItems]);
 
   const getDirectMessages = useCallback(

@@ -41,7 +41,7 @@ export interface SocialContextValue {
   deletePost: (postId: string) => void;
   updateProfile: (patch: Pick<User, 'name' | 'username' | 'bio' | 'avatarUrl'>) => void;
   markInboxCommentsRead: () => void;
-  markConversationRead: (participantId: string) => Promise<void>;
+  markConversationRead: (participantId: string) => Promise<boolean>;
 }
 
 export const SocialContext = createContext<SocialContextValue | null>(null);
