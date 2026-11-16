@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   INITIAL_FOLLOWS,
   INITIAL_DIRECT_MESSAGES,
@@ -74,6 +74,7 @@ const newestInboxFirst = (left: InboxItem, right: InboxItem) =>
 
 export function SocialProvider({ children }: { children: ReactNode }) {
   const [currentUserId, setCurrentUserIdState] = useState<string | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>(INITIAL_INBOX_ITEMS);
@@ -94,6 +95,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const setCurrentUserId = useCallback(
     (userId: string | null) => {
       if (currentUserId === userId) return;
+      currentUserIdRef.current = userId;
       setCurrentUserIdState(userId);
       setInboxItems(userId ? [] : INITIAL_INBOX_ITEMS);
       setDirectMessages(userId ? [] : INITIAL_DIRECT_MESSAGES);
@@ -113,6 +115,45 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     [currentUserId],
   );
 
+  const refreshInbox = useCallback(async () => {
+    if (!currentUserId || !supabase) return;
+    const requestedUserId = currentUserId;
+
+    const { data, error } = await supabase
+      .from('messages')
+      .select('id, sender_id, receiver_id, content, is_read, created_at')
+      .or(`sender_id.eq.${requestedUserId},receiver_id.eq.${requestedUserId}`)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    if (currentUserIdRef.current !== requestedUserId) return;
+
+    const rows = (data ?? []) as unknown as MessageRow[];
+    setDirectMessages(
+      rows.map((row) => ({
+        id: String(row.id),
+        participantId: row.sender_id === currentUserId ? row.receiver_id : row.sender_id ?? 'system',
+        senderId: row.sender_id ?? 'system',
+        content: row.content,
+        createdAt: row.created_at,
+      })),
+    );
+    const messageItems = rows
+      .filter((row) => row.receiver_id === currentUserId)
+      .map<InboxItem>((row) => ({
+        id: `message-${row.id}`,
+        category: 'messages',
+        content: row.content,
+        senderId: row.sender_id ?? undefined,
+        createdAt: row.created_at,
+        isRead: row.is_read,
+      }));
+    setInboxItems((previous) =>
+      [...previous.filter((item) => item.category !== 'messages'), ...messageItems].sort(
+        newestInboxFirst,
+      ),
+    );
+  }, [currentUserId]);
+
   useEffect(() => {
     if (!currentUserId || !supabase) return;
     const client = supabase;
@@ -120,40 +161,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
 
     const loadMessages = async () => {
       try {
-        const { data, error } = await client
-          .from('messages')
-          .select('id, sender_id, receiver_id, content, is_read, created_at')
-          .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
-          .order('created_at', { ascending: true });
-        if (error) throw error;
+          await refreshInbox();
         if (!active) return;
-
-        const rows = (data ?? []) as unknown as MessageRow[];
-        setDirectMessages(
-          rows.map((row) => ({
-            id: String(row.id),
-            participantId:
-              row.sender_id === currentUserId ? row.receiver_id : row.sender_id ?? 'system',
-            senderId: row.sender_id ?? 'system',
-            content: row.content,
-            createdAt: row.created_at,
-          })),
-        );
-        const messageItems = rows
-          .filter((row) => row.receiver_id === currentUserId)
-          .map<InboxItem>((row) => ({
-            id: `message-${row.id}`,
-            category: 'messages',
-            content: row.content,
-            senderId: row.sender_id ?? undefined,
-            createdAt: row.created_at,
-            isRead: row.is_read,
-          }));
-        setInboxItems((previous) =>
-          [...previous.filter((item) => item.category !== 'messages'), ...messageItems].sort(
-            newestInboxFirst,
-          ),
-        );
       } catch (error) {
         console.error('[Inbox] failed to load messages', error);
       }
@@ -215,7 +224,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [currentUserId]);
+  }, [currentUserId, refreshInbox]);
 
   useEffect(() => {
     if (!currentUserId || !supabase) return;
@@ -731,6 +740,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       users,
       posts,
       inboxItems,
+      refreshInbox,
       getDirectMessages,
       sendDirectMessage,
       hasUnreadInboxItems: inboxItems.some((item) => !item.isRead),
@@ -764,6 +774,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       users,
       posts,
       inboxItems,
+      refreshInbox,
       getDirectMessages,
       sendDirectMessage,
       getUser,

@@ -10,9 +10,10 @@ const BIO_MAX = 160;
 
 interface EditProfileModalProps {
   onClose: () => void;
+  onSaved: () => void;
 }
 
-export function EditProfileModal({ onClose }: EditProfileModalProps) {
+export function EditProfileModal({ onClose, onSaved }: EditProfileModalProps) {
   const { getUser, updateProfile } = useSocial();
   const me = getUser(ME_ID);
   const [name, setName] = useState(me?.name ?? '');
@@ -20,6 +21,8 @@ export function EditProfileModal({ onClose }: EditProfileModalProps) {
   const [bio, setBio] = useState(me?.bio ?? '');
   const [avatarUrl, setAvatarUrl] = useState(me?.avatarUrl ?? '');
   const [avatarError, setAvatarError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
 
@@ -52,11 +55,48 @@ export function EditProfileModal({ onClose }: EditProfileModalProps) {
     event.target.value = '';
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!canSave) return;
-    updateProfile({ name: trimmedName, username: trimmedUsername, bio: bio.trim(), avatarUrl });
-    onClose();
+    if (!canSave || saving) return;
+    if (!supabase) {
+      setSaveError('Profile service is not configured.');
+      return;
+    }
+
+    setSaving(true);
+    setSaveError('');
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('You must be signed in to save your profile.');
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .update({
+          username: trimmedUsername,
+          full_name: trimmedName,
+          avatar_url: avatarUrl || null,
+          bio: bio.trim(),
+        })
+        .eq('id', authData.user.id)
+        .select('username, full_name, avatar_url, bio')
+        .single();
+      if (error) throw error;
+
+      updateProfile({
+        name: profile.full_name || profile.username,
+        username: profile.username,
+        bio: profile.bio ?? '',
+        avatarUrl: profile.avatar_url ?? undefined,
+      });
+      onSaved();
+      onClose();
+    } catch (error: unknown) {
+      console.error('[Profile] failed to save profile', error);
+      setSaveError(error instanceof Error ? error.message : 'Unable to save profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -169,19 +209,25 @@ export function EditProfileModal({ onClose }: EditProfileModalProps) {
             <LogOut aria-hidden="true" className="h-4 w-4" />
             {signingOut ? 'Signing out…' : 'Sign out'}
           </button>
+          {saveError && (
+            <p role="alert" className="w-full text-right text-xs text-red-700">
+              {saveError}
+            </p>
+          )}
           <button
             type="button"
             onClick={onClose}
+            disabled={saving}
             className="rounded-full px-4 py-2 text-sm font-medium text-charcoal-600 transition hover:text-charcoal-900"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={!canSave}
+            disabled={!canSave || saving}
             className="rounded-full bg-charcoal-900 px-6 py-2 text-sm font-medium text-paper-50 transition hover:bg-charcoal-700 disabled:cursor-not-allowed disabled:bg-fog-300 disabled:text-charcoal-500"
           >
-            Save changes
+            {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
         {signOutError && (

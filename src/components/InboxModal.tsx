@@ -23,7 +23,20 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
     markAllInboxItemsRead,
   } = useSocial();
   const [activeCategory, setActiveCategory] = useState<InboxCategory>('comments');
-  const visibleItems = inboxItems.filter((item) => item.category === activeCategory);
+  const categoryItems = inboxItems.filter((item) => item.category === activeCategory);
+  const visibleItems =
+    activeCategory === 'messages'
+      ? [...
+          categoryItems.reduce((latestBySender, item) => {
+            const senderKey = item.senderId ?? 'system';
+            const latest = latestBySender.get(senderKey);
+            if (!latest || Date.parse(item.createdAt) > Date.parse(latest.createdAt)) {
+              latestBySender.set(senderKey, item);
+            }
+            return latestBySender;
+          }, new Map<string, InboxItem>()).values(),
+        ].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+      : categoryItems;
 
   const handleClose = () => {
     markAllInboxItemsRead();

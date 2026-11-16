@@ -52,6 +52,7 @@ export function ProfilePage({
     loadPostLikes,
   } = useSocial();
   const [editing, setEditing] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [chatParticipantId, setChatParticipantId] = useState<string | null>(null);
   const [followList, setFollowList] = useState<'following' | 'followers' | null>(null);
@@ -62,6 +63,12 @@ export function ProfilePage({
   const profileUserId = isOwn ? currentUserId : userId;
   const socialUserId = isOwn ? currentUserId : userId;
   const user = getUser(userId) ?? (isOwn ? getUser(ME_ID) : undefined);
+
+  useEffect(() => {
+    if (!profileSaved) return;
+    const timeout = window.setTimeout(() => setProfileSaved(false), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [profileSaved]);
 
   useEffect(() => {
     if (!supabase) {
@@ -152,6 +159,11 @@ export function ProfilePage({
 
   return (
     <section className="flex flex-col gap-12">
+      {profileSaved && (
+        <p role="status" className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">
+          Profile saved.
+        </p>
+      )}
       <header className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:gap-8 sm:text-left">
         <Avatar id={user.id} name={user.name} avatarUrl={user.avatarUrl} size="lg" />
         <div className="flex min-w-0 flex-1 flex-col items-center gap-4 sm:items-start">
@@ -279,7 +291,12 @@ export function ProfilePage({
         )}
       </div>
 
-      {editing && <EditProfileModal onClose={() => setEditing(false)} />}
+      {editing && (
+        <EditProfileModal
+          onClose={() => setEditing(false)}
+          onSaved={() => setProfileSaved(true)}
+        />
+      )}
       {followList && (
         <Modal
           title={followList === 'following' ? 'Following' : 'Followers'}

@@ -14,6 +14,7 @@ import type { Page } from '@/types';
 export default function App() {
   const {
     updateProfile,
+    refreshInbox,
     currentUserId: socialUserId,
     setCurrentUserId,
   } = useSocial();
@@ -103,6 +104,13 @@ export default function App() {
           bio: profile.bio ?? '',
           avatarUrl: profile.avatar_url ?? undefined,
         });
+
+        const { error: welcomeError } = await client.rpc('ensure_welcome_message');
+        if (welcomeError) {
+          console.error('[Auth] failed to ensure welcome message', welcomeError);
+        } else {
+          await refreshInbox();
+        }
       } catch (error) {
         console.error('[Auth] failed to load profile', error);
       }
@@ -112,7 +120,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [session, updateProfile]);
+  }, [refreshInbox, session, updateProfile]);
 
   const navigate = useCallback((next: Page) => {
     if (next === 'profile') setProfileId(ME_ID);
