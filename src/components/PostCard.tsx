@@ -193,33 +193,29 @@ export function PostCard({
               <span>{likeCount(post.id)}</span>
             </button>
 
-            {isOwn || hasPrivateConversation ? (
-              <button
-                type="button"
-                onClick={() => setRepliesOpen((open) => !open)}
-                aria-expanded={repliesOpen}
-                aria-label={`Private replies${privateReplies.length > 0 ? ` ${privateReplies.length}` : ''}`}
-                title={`Private replies${privateReplies.length > 0 ? ` ${privateReplies.length}` : ''}`}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-charcoal-500 transition hover:bg-fog-200/70 hover:text-charcoal-900"
-              >
-                <Send className="h-4 w-4" />
-                {privateReplies.length > 0 && (
-                  <span className="text-xs tabular-nums">{privateReplies.length}</span>
-                )}
-              </button>
-            ) : null}
-
-            {!isOwn && (
-              <button
-                type="button"
-                onClick={() => setReplyOpen(true)}
-                aria-label="Private reply"
-                title="Private reply"
-                className="rounded-full px-2.5 py-1.5 text-charcoal-500 transition hover:bg-fog-200/70 hover:text-charcoal-900"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (isOwn || hasPrivateConversation) {
+                  setRepliesOpen((open) => !open);
+                } else {
+                  setReplyOpen(true);
+                }
+              }}
+              aria-expanded={isOwn || hasPrivateConversation ? repliesOpen : undefined}
+              aria-label={
+                isOwn || hasPrivateConversation
+                  ? `Private replies${privateReplies.length > 0 ? ` ${privateReplies.length}` : ''}`
+                  : 'Private reply'
+              }
+              title={isOwn || hasPrivateConversation ? 'Private replies' : 'Private reply'}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-charcoal-500 transition hover:bg-fog-200/70 hover:text-charcoal-900"
+            >
+              <Send className="h-4 w-4" />
+              {(isOwn || hasPrivateConversation) && privateReplies.length > 0 && (
+                <span className="text-xs tabular-nums">{privateReplies.length}</span>
+              )}
+            </button>
 
             {isOwn && (
               <button

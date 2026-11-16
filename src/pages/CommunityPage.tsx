@@ -24,10 +24,14 @@ interface PostRow {
   created_at: string;
   likes_count?: number | null;
   is_hidden?: boolean | null;
+  profiles:
+    | { username: string | null; full_name: string | null; bio: string | null; avatar_url: string | null }
+    | { username: string | null; full_name: string | null; bio: string | null; avatar_url: string | null }[]
+    | null;
 }
 
 export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: CommunityPageProps) {
-  const { isFollowing, getUser, loadPostLikes } = useSocial();
+  const { isFollowing, getUser, cacheUsers, loadPostLikes } = useSocial();
   const [tab, setTab] = useState<FeedTab>('following');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +48,7 @@ export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: Comm
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select('*')
+        .select('*, profiles(username, full_name, bio, avatar_url)')
         .order('created_at', { ascending: false });
       console.log('拉到的动态:', data);
       if (error) console.error(error);
@@ -53,14 +57,23 @@ export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: Comm
       const rows = (data ?? []) as unknown as PostRow[];
       const loadedPosts: Post[] = rows.map((row) => {
         const authorId = String(row.user_id);
+        const joinedProfile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
         const cachedAuthor =
           getUser(authorId) ?? (authorId === currentUserId ? getUser(ME_ID) : undefined);
-        const author = cachedAuthor ?? {
-          id: authorId,
-          name: '匿名用户',
-          username: `user_${authorId.slice(0, 8)}`,
-          bio: '',
-        };
+        const author = joinedProfile
+          ? {
+              id: authorId,
+              name: joinedProfile.full_name || joinedProfile.username || 'Member',
+              username: joinedProfile.username || 'member',
+              bio: joinedProfile.bio || '',
+              avatarUrl: joinedProfile.avatar_url ?? undefined,
+            }
+          : cachedAuthor ?? {
+              id: authorId,
+              name: '匿名用户',
+              username: `user_${authorId.slice(0, 8)}`,
+              bio: '',
+            };
 
         return {
           id: String(row.id),
@@ -73,6 +86,7 @@ export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: Comm
         };
       });
 
+      cacheUsers(loadedPosts.flatMap((post) => (post.author ? [post.author] : [])));
       await loadPostLikes(loadedPosts);
       setPosts(loadedPosts);
       setLoadError('');
@@ -83,7 +97,7 @@ export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: Comm
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, getUser, loadPostLikes]);
+  }, [cacheUsers, currentUserId, getUser, loadPostLikes]);
 
   useEffect(() => {
     console.log('正在请求 Supabase...');
