@@ -1,7 +1,9 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { LogOut } from 'lucide-react';
 import { ME_ID } from '@/data/mockData';
 import { useSocial } from '@/state/SocialContext';
 import { Modal } from '@/components/Modal';
+import { supabase } from '@/supabase';
 
 const USERNAME_PATTERN = /^[a-z0-9._]{3,24}$/;
 const BIO_MAX = 160;
@@ -18,6 +20,8 @@ export function EditProfileModal({ onClose }: EditProfileModalProps) {
   const [bio, setBio] = useState(me?.bio ?? '');
   const [avatarUrl, setAvatarUrl] = useState(me?.avatarUrl ?? '');
   const [avatarError, setAvatarError] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState('');
 
   const trimmedName = name.trim();
   const trimmedUsername = username.trim().toLowerCase();
@@ -52,6 +56,19 @@ export function EditProfileModal({ onClose }: EditProfileModalProps) {
     event.preventDefault();
     if (!canSave) return;
     updateProfile({ name: trimmedName, username: trimmedUsername, bio: bio.trim(), avatarUrl });
+    onClose();
+  };
+
+  const handleSignOut = async () => {
+    if (!supabase || signingOut) return;
+    setSigningOut(true);
+    setSignOutError('');
+    const { error } = await supabase.auth.signOut();
+    setSigningOut(false);
+    if (error) {
+      setSignOutError(error.message);
+      return;
+    }
     onClose();
   };
 
@@ -142,7 +159,16 @@ export function EditProfileModal({ onClose }: EditProfileModalProps) {
           />
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-fog-200 pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-fog-200 pt-5">
+          <button
+            type="button"
+            onClick={() => void handleSignOut()}
+            disabled={signingOut || !supabase}
+            className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <LogOut aria-hidden="true" className="h-4 w-4" />
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
           <button
             type="button"
             onClick={onClose}
@@ -158,6 +184,11 @@ export function EditProfileModal({ onClose }: EditProfileModalProps) {
             Save changes
           </button>
         </div>
+        {signOutError && (
+          <p role="alert" className="-mt-3 text-right text-xs text-red-700">
+            {signOutError}
+          </p>
+        )}
       </form>
     </Modal>
   );

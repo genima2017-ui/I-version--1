@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Mail } from 'lucide-react';
+import { Mail, MessageCircle } from 'lucide-react';
 import { ME_ID } from '@/data/mockData';
 import { useSocial } from '@/state/SocialContext';
 import { supabase } from '@/supabase';
@@ -174,6 +174,17 @@ export function ProfilePage({
                       className="absolute right-2 top-2 h-2 w-2 animate-pulse rounded-full bg-red-500 ring-2 ring-paper-50"
                     />
                   )}
+                </button>
+              )}
+              {!isOwn && (
+                <button
+                  type="button"
+                  onClick={() => setChatParticipantId(user.id)}
+                  aria-label={`Message ${user.name}`}
+                  title="Send a private message"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-charcoal-600 transition hover:bg-fog-200 hover:text-charcoal-900"
+                >
+                  <MessageCircle className="h-5 w-5" aria-hidden="true" />
                 </button>
               )}
             </div>
