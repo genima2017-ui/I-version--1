@@ -128,15 +128,19 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     if (currentUserIdRef.current !== requestedUserId) return;
 
     const rows = (data ?? []) as unknown as MessageRow[];
-    setDirectMessages(
-      rows.map((row) => ({
+    setDirectMessages((previous) => {
+      const messagesById = new Map(previous.map((message) => [message.id, message]));
+      rows.forEach((row) => messagesById.set(String(row.id), {
         id: String(row.id),
         participantId: row.sender_id === currentUserId ? row.receiver_id : row.sender_id ?? 'system',
         senderId: row.sender_id ?? 'system',
         content: row.content,
         createdAt: row.created_at,
-      })),
-    );
+      }));
+      return [...messagesById.values()].sort(
+        (left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt),
+      );
+    });
     const messageItems = rows
       .filter((row) => row.receiver_id === currentUserId)
       .map<InboxItem>((row) => ({
@@ -147,11 +151,14 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         createdAt: row.created_at,
         isRead: row.is_read,
       }));
-    setInboxItems((previous) =>
-      [...previous.filter((item) => item.category !== 'messages'), ...messageItems].sort(
-        newestInboxFirst,
-      ),
-    );
+    setInboxItems((previous) => {
+      const itemsById = new Map(previous.map((item) => [item.id, item]));
+      messageItems.forEach((item) => {
+        const existing = itemsById.get(item.id);
+        itemsById.set(item.id, existing?.isRead ? { ...item, isRead: true } : item);
+      });
+      return [...itemsById.values()].sort(newestInboxFirst);
+    });
   }, [currentUserId]);
 
   const loadConversation = useCallback(
@@ -183,11 +190,13 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           createdAt: row.created_at,
         }));
 
-      setDirectMessages((previous) =>
-        [...previous.filter((message) => message.participantId !== participantId), ...conversation].sort(
+      setDirectMessages((previous) => {
+        const messagesById = new Map(previous.map((message) => [message.id, message]));
+        conversation.forEach((message) => messagesById.set(message.id, message));
+        return [...messagesById.values()].sort(
           (left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt),
-        ),
-      );
+        );
+      });
     },
     [currentUserId],
   );
@@ -755,20 +764,13 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     setUsers((prev) => prev.map((user) => (user.id === ME_ID ? { ...user, ...patch } : user)));
   }, []);
 
-  const markAllInboxItemsRead = useCallback(() => {
-    setInboxItems((prev) => prev.map((item) => ({ ...item, isRead: true })));
+  const markInboxCommentsRead = useCallback(() => {
+    setInboxItems((prev) => prev.map((item) =>
+      item.category === 'comments' ? { ...item, isRead: true } : item,
+    ));
     if (!currentUserId || !supabase) return;
 
     const client = supabase;
-    void client
-      .from('messages')
-      .update({ is_read: true })
-      .eq('receiver_id', currentUserId)
-      .eq('is_read', false)
-      .then(({ error }) => {
-        if (error) console.error('[Inbox] failed to mark messages read', error);
-      });
-
     const unreadReplyIds = inboxItems
       .filter((item) => item.category === 'comments' && !item.isRead && item.replyId)
       .map((item) => item.replyId as string);
@@ -781,6 +783,37 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           if (error) console.error('[Inbox] failed to mark replies read', error);
         });
     }
+  }, [currentUserId, inboxItems]);
+
+  const markConversationRead = useCallback(async (participantId: string) => {
+    const unreadItems = inboxItems.filter((item) =>
+      item.category === 'messages' && !item.isRead &&
+      (item.senderId ?? 'system') === participantId,
+    );
+    if (unreadItems.length === 0) return;
+    const unreadItemIds = new Set(unreadItems.map((item) => item.id));
+    if (currentUserId && supabase) {
+      let query = supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('receiver_id', currentUserId)
+        .eq('is_read', false)
+        .in('id', unreadItems.map((item) => item.id.replace(/^message-/, '')));
+      query = participantId === 'system'
+        ? query.is('sender_id', null)
+        : query.eq('sender_id', participantId);
+      const { error } = await query;
+      if (error) {
+        console.error('[Inbox] failed to mark conversation read', error);
+        return;
+      }
+      if (currentUserIdRef.current !== currentUserId) return;
+    }
+    setInboxItems((previous) => previous.map((item) =>
+      unreadItemIds.has(item.id)
+        ? { ...item, isRead: true }
+        : item,
+    ));
   }, [currentUserId, inboxItems]);
 
   const getDirectMessages = useCallback(
@@ -836,6 +869,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       users,
       posts,
       inboxItems,
+      directMessages,
       refreshInbox,
       loadConversation,
       getDirectMessages,
@@ -863,7 +897,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       updatePost,
       deletePost,
       updateProfile,
-      markAllInboxItemsRead,
+      markInboxCommentsRead,
+      markConversationRead,
     }),
     [
       currentUserId,
@@ -871,6 +906,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       users,
       posts,
       inboxItems,
+      directMessages,
       refreshInbox,
       loadConversation,
       getDirectMessages,
@@ -897,7 +933,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       updatePost,
       deletePost,
       updateProfile,
-      markAllInboxItemsRead,
+      markInboxCommentsRead,
+      markConversationRead,
     ],
   );
 

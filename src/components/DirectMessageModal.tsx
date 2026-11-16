@@ -15,7 +15,10 @@ interface DirectMessageModalProps {
 }
 
 export function DirectMessageModal({ participantId, onClose }: DirectMessageModalProps) {
-  const { currentUserId, getUser, getDirectMessages, loadConversation, sendDirectMessage } = useSocial();
+  const {
+    currentUserId, getUser, inboxItems, getDirectMessages, loadConversation,
+    markConversationRead, sendDirectMessage,
+  } = useSocial();
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
@@ -25,6 +28,10 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
   const participant = getUser(participantId);
   const messages = getDirectMessages(participantId);
   const trimmedDraft = draft.trim();
+  const hasUnreadMessages = inboxItems.some(
+    (item) => item.category === 'messages' && !item.isRead &&
+      (item.senderId ?? 'system') === participantId,
+  );
   const messageGroups = messages.reduce<DirectMessage[][]>((groups, message) => {
     const lastGroup = groups[groups.length - 1];
     if (lastGroup && lastGroup[0].senderId === message.senderId) {
@@ -66,6 +73,10 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
+
+  useEffect(() => {
+    if (hasUnreadMessages) void markConversationRead(participantId);
+  }, [hasUnreadMessages, markConversationRead, participantId]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -139,7 +150,7 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
           <div ref={messageEndRef} />
         </div>
 
-        <form
+        {participantId !== 'system' && <form
           onSubmit={handleSubmit}
           className="box-border flex w-full min-w-0 max-w-full shrink-0 items-center gap-2 border-t border-white/60 bg-white/80 px-4 pt-1 pb-[env(safe-area-inset-bottom)]"
         >
@@ -170,7 +181,7 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
           >
             <Send className="h-4 w-4" />
           </button>
-        </form>
+        </form>}
       </div>
     </Modal>
   );

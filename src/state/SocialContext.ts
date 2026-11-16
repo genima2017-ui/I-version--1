@@ -7,6 +7,7 @@ export interface SocialContextValue {
   users: User[];
   posts: Post[];
   inboxItems: InboxItem[];
+  directMessages: DirectMessage[];
   refreshInbox: () => Promise<void>;
   loadConversation: (participantId: string) => Promise<void>;
   getDirectMessages: (participantId: string) => DirectMessage[];
@@ -39,7 +40,8 @@ export interface SocialContextValue {
   updatePost: (postId: string, patch: Partial<Pick<Post, 'content' | 'isHidden'>>) => void;
   deletePost: (postId: string) => void;
   updateProfile: (patch: Pick<User, 'name' | 'username' | 'bio' | 'avatarUrl'>) => void;
-  markAllInboxItemsRead: () => void;
+  markInboxCommentsRead: () => void;
+  markConversationRead: (participantId: string) => Promise<void>;
 }
 
 export const SocialContext = createContext<SocialContextValue | null>(null);

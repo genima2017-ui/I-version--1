@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/Avatar';
 import { Modal } from '@/components/Modal';
 import { formatTimeAgo } from '@/lib/time';
 import { useSocial } from '@/state/SocialContext';
+import { supabase } from '@/supabase';
 import type { InboxCategory, InboxItem, User } from '@/types';
 
 interface InboxModalProps {
@@ -19,9 +20,36 @@ const TABS: { category: InboxCategory; label: string }[] = [
 export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxModalProps) {
   const {
     inboxItems,
+    directMessages,
     getUser,
-    markAllInboxItemsRead,
+    cacheUsers,
+    markInboxCommentsRead,
   } = useSocial();
+  useEffect(() => {
+    if (!supabase) return;
+    const missingIds = [...new Set(directMessages.map((message) => message.participantId))]
+      .filter((id) => id !== 'system' && !getUser(id));
+    if (missingIds.length === 0) return;
+    let active = true;
+    void supabase.from('profiles')
+      .select('id, username, full_name, bio, avatar_url')
+      .in('id', missingIds)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[Inbox] failed to load conversation profiles', error);
+          return;
+        }
+        if (!active || !data?.length) return;
+        cacheUsers(data.map((profile) => ({
+          id: profile.id,
+          name: profile.full_name || profile.username || 'Member',
+          username: profile.username || 'member',
+          bio: profile.bio ?? '',
+          avatarUrl: profile.avatar_url ?? undefined,
+        })));
+      });
+    return () => { active = false; };
+  }, [cacheUsers, directMessages, getUser]);
   const [activeCategory, setActiveCategory] = useState<InboxCategory>(() => {
     const newestUnread = inboxItems.reduce<InboxItem | null>((latest, item) => {
       if (item.isRead) return latest;
@@ -34,11 +62,17 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
   const visibleItems =
     activeCategory === 'messages'
       ? [...
-          categoryItems.reduce((latestBySender, item) => {
-            const senderKey = item.senderId ?? 'system';
-            const latest = latestBySender.get(senderKey);
-            if (!latest || Date.parse(item.createdAt) > Date.parse(latest.createdAt)) {
-              latestBySender.set(senderKey, item);
+          directMessages.reduce((latestBySender, message) => {
+            const latest = latestBySender.get(message.participantId);
+            if (!latest || Date.parse(message.createdAt) > Date.parse(latest.createdAt)) {
+              latestBySender.set(message.participantId, {
+                id: `message-${message.id}`,
+                category: 'messages',
+                content: message.content,
+                senderId: message.participantId === 'system' ? undefined : message.participantId,
+                createdAt: message.createdAt,
+                isRead: true,
+              });
             }
             return latestBySender;
           }, new Map<string, InboxItem>()).values(),
@@ -46,17 +80,16 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
       : categoryItems;
 
   const handleClose = () => {
-    markAllInboxItemsRead();
+    if (activeCategory === 'comments') markInboxCommentsRead();
     onClose();
   };
 
   const handleTabClick = (category: InboxCategory) => {
+    if (activeCategory === 'comments') markInboxCommentsRead();
     setActiveCategory(category);
-    markAllInboxItemsRead();
   };
 
   const handleOpenConversation = (participantId: string) => {
-    markAllInboxItemsRead();
     onOpenConversation(participantId);
   };
 
@@ -64,7 +97,7 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
     if (import.meta.env.DEV) {
       console.log('[Inbox] comment clicked', { postId, replyId });
     }
-    markAllInboxItemsRead();
+    markInboxCommentsRead();
     onOpenPost(postId, replyId);
   };
 
@@ -106,7 +139,7 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
           <ul className="divide-y divide-fog-200">
             {visibleItems.map((item) => {
               const sender = item.senderId ? getUser(item.senderId) : undefined;
-              const isMessage = item.category === 'messages' && Boolean(item.senderId);
+              const isMessage = item.category === 'messages';
               const isComment = item.category === 'comments' && Boolean(item.postId);
               const isActionable = isMessage || isComment;
 
@@ -116,8 +149,8 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
                     <button
                       type="button"
                       onClick={() => {
-                        if (isMessage && item.senderId) {
-                          handleOpenConversation(item.senderId);
+                        if (isMessage) {
+                          handleOpenConversation(item.senderId ?? 'system');
                         } else if (item.postId) {
                           handleOpenPost(item.postId, item.replyId);
                         }
