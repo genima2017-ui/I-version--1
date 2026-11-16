@@ -282,6 +282,7 @@ export function PostCard({
                 postId={post.id}
                 replies={privateReplies}
                 highlightReplyId={highlightReplyId}
+                onOpenProfile={onOpenProfile}
               />
             </div>
           )}

@@ -8,6 +8,7 @@ interface PrivateRepliesListProps {
   postId: string;
   replies: PrivateReply[];
   highlightReplyId?: string;
+  onOpenProfile: (userId: string) => void;
 }
 
 const newestFirst = (left: PrivateReply, right: PrivateReply) =>
@@ -17,6 +18,7 @@ export function PrivateRepliesList({
   postId,
   replies,
   highlightReplyId,
+  onOpenProfile,
 }: PrivateRepliesListProps) {
   const { currentUserId, getUser, addPrivateReply } = useSocial();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -105,9 +107,14 @@ export function PrivateRepliesList({
               className="rounded-xl border border-fog-200 bg-paper-50 px-4 py-3"
             >
               <div className="mb-1.5 flex items-baseline justify-between gap-3">
-                <span className="text-sm font-medium text-charcoal-800">
+                <button
+                  type="button"
+                  onClick={() => onOpenProfile(reply.authorId)}
+                  aria-label={`View ${getUser(reply.authorId)?.name ?? 'Someone'}'s profile`}
+                  className="text-left text-sm font-medium text-charcoal-800 hover:underline"
+                >
                   {getUser(reply.authorId)?.name ?? 'Someone'}
-                </span>
+                </button>
                 <span className="shrink-0 text-xs text-charcoal-500">{formatTimeAgo(reply.createdAt)}</span>
               </div>
               <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-charcoal-700">
@@ -119,9 +126,14 @@ export function PrivateRepliesList({
                   {childReplies.map((child) => (
                     <li key={child.id} id={`private-reply-${child.id}`}>
                       <div className="mb-1 flex items-baseline justify-between gap-3">
-                        <span className="text-xs font-medium text-charcoal-700">
+                        <button
+                          type="button"
+                          onClick={() => onOpenProfile(child.authorId)}
+                          aria-label={`View ${getUser(child.authorId)?.name ?? 'Someone'}'s profile`}
+                          className="text-left text-xs font-medium text-charcoal-700 hover:underline"
+                        >
                           {getUser(child.authorId)?.name ?? 'You'}
-                        </span>
+                        </button>
                         <span className="shrink-0 text-xs text-charcoal-500">
                           {formatTimeAgo(child.createdAt)}
                         </span>
