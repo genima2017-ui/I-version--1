@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ME_ID } from '@/data/mockData';
 import { useSocial } from '@/state/SocialContext';
 import { supabase } from '@/supabase';
 import { PostCard } from '@/components/PostCard';
@@ -31,7 +30,7 @@ interface PostRow {
 }
 
 export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: CommunityPageProps) {
-  const { isFollowing, getUser, cacheUsers, loadPostLikes } = useSocial();
+  const { isFollowing, cacheUsers, loadPostLikes } = useSocial();
   const [tab, setTab] = useState<FeedTab>('following');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +57,6 @@ export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: Comm
       const loadedPosts: Post[] = rows.map((row) => {
         const authorId = String(row.user_id);
         const joinedProfile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-        const cachedAuthor =
-          getUser(authorId) ?? (authorId === currentUserId ? getUser(ME_ID) : undefined);
         const author = joinedProfile
           ? {
               id: authorId,
@@ -68,7 +65,7 @@ export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: Comm
               bio: joinedProfile.bio || '',
               avatarUrl: joinedProfile.avatar_url ?? undefined,
             }
-          : cachedAuthor ?? {
+          : {
               id: authorId,
               name: '匿名用户',
               username: `user_${authorId.slice(0, 8)}`,
@@ -97,7 +94,7 @@ export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: Comm
     } finally {
       setLoading(false);
     }
-  }, [cacheUsers, currentUserId, getUser, loadPostLikes]);
+  }, [cacheUsers, loadPostLikes]);
 
   useEffect(() => {
     console.log('正在请求 Supabase...');

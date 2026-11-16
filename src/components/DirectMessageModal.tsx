@@ -15,9 +15,11 @@ interface DirectMessageModalProps {
 }
 
 export function DirectMessageModal({ participantId, onClose }: DirectMessageModalProps) {
-  const { currentUserId, getUser, getDirectMessages, sendDirectMessage } = useSocial();
+  const { currentUserId, getUser, getDirectMessages, loadConversation, sendDirectMessage } = useSocial();
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const messageEndRef = useRef<HTMLDivElement>(null);
   const draftInputRef = useRef<HTMLTextAreaElement>(null);
   const participant = getUser(participantId);
@@ -32,6 +34,23 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
     }
     return groups;
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoadingMessages(true);
+    setLoadError('');
+    void loadConversation(participantId)
+      .catch((error: unknown) => {
+        console.error('[Messages] failed to load conversation', error);
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load messages.');
+      })
+      .finally(() => {
+        if (active) setIsLoadingMessages(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [loadConversation, participantId]);
   const timestampMessageIds = new Set(
     messages
       .filter((message, index) => {
@@ -67,7 +86,13 @@ export function DirectMessageModal({ participantId, onClose }: DirectMessageModa
           aria-label="Conversation messages"
           className="box-border w-full min-h-0 min-w-0 max-w-full flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6"
         >
-          {messageGroups.length > 0 ? (
+          {isLoadingMessages && messageGroups.length === 0 ? (
+            <p className="py-10 text-center text-sm text-charcoal-500">正在加载聊天记录…</p>
+          ) : loadError && messageGroups.length === 0 ? (
+            <p role="alert" className="py-10 text-center text-sm text-charcoal-500">
+              {loadError}
+            </p>
+          ) : messageGroups.length > 0 ? (
             messageGroups.map((group) => {
               const isMine = group[0].senderId === (currentUserId ?? ME_ID);
               return (

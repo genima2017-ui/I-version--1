@@ -154,6 +154,44 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     );
   }, [currentUserId]);
 
+  const loadConversation = useCallback(
+    async (participantId: string) => {
+      if (!currentUserId || !supabase) return;
+      const requestedUserId = currentUserId;
+
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id, sender_id, receiver_id, content, is_read, created_at')
+        .or(`sender_id.eq.${requestedUserId},receiver_id.eq.${requestedUserId}`)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      if (currentUserIdRef.current !== requestedUserId) return;
+
+      const rows = (data ?? []) as unknown as MessageRow[];
+      const conversation = rows
+        .filter(
+          (row) =>
+            (row.sender_id === requestedUserId && row.receiver_id === participantId) ||
+            (row.sender_id === participantId && row.receiver_id === requestedUserId) ||
+            (participantId === 'system' && row.sender_id === null && row.receiver_id === requestedUserId),
+        )
+        .map<DirectMessage>((row) => ({
+          id: String(row.id),
+          participantId,
+          senderId: row.sender_id ?? 'system',
+          content: row.content,
+          createdAt: row.created_at,
+        }));
+
+      setDirectMessages((previous) =>
+        [...previous.filter((message) => message.participantId !== participantId), ...conversation].sort(
+          (left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt),
+        ),
+      );
+    },
+    [currentUserId],
+  );
+
   useEffect(() => {
     if (!currentUserId || !supabase) return;
     const client = supabase;
@@ -741,6 +779,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       posts,
       inboxItems,
       refreshInbox,
+      loadConversation,
       getDirectMessages,
       sendDirectMessage,
       hasUnreadInboxItems: inboxItems.some((item) => !item.isRead),
@@ -775,6 +814,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       posts,
       inboxItems,
       refreshInbox,
+      loadConversation,
       getDirectMessages,
       sendDirectMessage,
       getUser,

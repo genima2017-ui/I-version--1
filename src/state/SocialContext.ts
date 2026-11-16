@@ -8,6 +8,7 @@ export interface SocialContextValue {
   posts: Post[];
   inboxItems: InboxItem[];
   refreshInbox: () => Promise<void>;
+  loadConversation: (participantId: string) => Promise<void>;
   getDirectMessages: (participantId: string) => DirectMessage[];
   sendDirectMessage: (participantId: string, content: string) => Promise<boolean>;
   hasUnreadInboxItems: boolean;
