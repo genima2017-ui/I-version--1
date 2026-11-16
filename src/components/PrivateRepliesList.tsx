@@ -6,7 +6,6 @@ import type { PrivateReply } from '@/types';
 
 interface PrivateRepliesListProps {
   postId: string;
-  receiverId: string;
   replies: PrivateReply[];
   highlightReplyId?: string;
 }
@@ -16,11 +15,10 @@ const newestFirst = (left: PrivateReply, right: PrivateReply) =>
 
 export function PrivateRepliesList({
   postId,
-  receiverId,
   replies,
   highlightReplyId,
 }: PrivateRepliesListProps) {
-  const { getUser, addPrivateReply } = useSocial();
+  const { currentUserId, getUser, addPrivateReply } = useSocial();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -34,7 +32,11 @@ export function PrivateRepliesList({
     [],
   );
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>, replyId: string) => {
+  const handleSubmit = (
+    event: FormEvent<HTMLFormElement>,
+    replyId: string,
+    receiverId: string,
+  ) => {
     event.preventDefault();
     const content = draft.trim();
     if (!content || isSending) return;
@@ -133,7 +135,17 @@ export function PrivateRepliesList({
               )}
 
               {replying ? (
-                <form onSubmit={(event) => handleSubmit(event, reply.id)} className="mt-3">
+                <form
+                  onSubmit={(event) => {
+                    const receiverId =
+                      reply.authorId === currentUserId
+                        ? reply.receiverId
+                        : reply.authorId;
+                    if (receiverId) handleSubmit(event, reply.id, receiverId);
+                    else event.preventDefault();
+                  }}
+                  className="mt-3"
+                >
                   <label htmlFor={`reply-${reply.id}`} className="sr-only">
                     Reply to {getUser(reply.authorId)?.name ?? 'comment'}
                   </label>

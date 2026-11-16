@@ -33,22 +33,22 @@ interface PrivateReplyRow {
   id: string | number;
   post_id: string;
   author_id: string;
+  receiver_id: string;
   reply_to_id: string | null;
   content: string;
   created_at: string;
   is_read: boolean;
-  posts: { user_id: string; content: string } | { user_id: string; content: string }[];
 }
 
 interface PrivateReplyEventRow {
   id: string | number;
   post_id: string | number;
   author_id: string;
+  receiver_id: string;
   reply_to_id: string | null;
   content: string;
   created_at: string;
   is_read: boolean;
-  receiver_id: string;
 }
 
 interface FollowRow {
@@ -163,8 +163,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       try {
         const { data, error } = await client
           .from('private_replies')
-          .select('id, post_id, author_id, reply_to_id, content, created_at, is_read, posts!inner(user_id, content)')
-          .eq('posts.user_id', currentUserId)
+          .select('id, post_id, author_id, receiver_id, reply_to_id, content, created_at, is_read')
+          .or(`author_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
           .order('created_at', { ascending: true });
         if (error) throw error;
         if (!active) return;
@@ -176,6 +176,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
             id: String(row.id),
             postId: String(row.post_id),
             authorId: row.author_id,
+            receiverId: row.receiver_id,
             replyToId: row.reply_to_id ?? undefined,
             content: row.content,
             createdAt: row.created_at,
@@ -183,7 +184,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           return [...repliesById.values()];
         });
         const commentItems = rows
-          .filter((row) => row.author_id !== currentUserId)
+          .filter((row) => row.receiver_id === currentUserId && row.author_id !== currentUserId)
           .map<InboxItem>((row) => ({
             id: `reply-${row.id}`,
             category: 'comments',
@@ -237,6 +238,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
             id: replyId,
             postId,
             authorId: row.author_id,
+            receiverId: row.receiver_id,
             replyToId: row.reply_to_id ?? undefined,
             content: row.content,
             createdAt: row.created_at,
@@ -576,6 +578,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
             id: String(data.id),
             postId: String(data.post_id),
             authorId: data.author_id,
+            receiverId: data.receiver_id,
             replyToId: data.reply_to_id ?? undefined,
             content: data.content,
             createdAt: data.created_at,

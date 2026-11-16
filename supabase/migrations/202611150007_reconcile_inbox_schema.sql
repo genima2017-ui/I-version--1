@@ -89,6 +89,7 @@ create policy private_replies_account_select_limit
     auth.uid() is not null
     and (
       author_id = auth.uid()
+      or receiver_id = auth.uid()
       or exists (
         select 1 from public.posts
         where posts.id = private_replies.post_id

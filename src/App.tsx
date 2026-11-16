@@ -127,13 +127,12 @@ export default function App() {
   }, []);
 
   const openPost = useCallback((postId: string, replyId?: string) => {
-    setProfileId(ME_ID);
     setTargetPost({ postId, replyId });
-    setPage('profile');
+    setPage('community');
   }, []);
 
   useEffect(() => {
-    if (page !== 'profile' || profileId !== ME_ID || !targetPost) return;
+    if (page !== 'community' || !targetPost) return;
     let attempts = 0;
     let frame = 0;
     const scrollToComment = () => {
@@ -161,7 +160,7 @@ export default function App() {
       }
 
       attempts += 1;
-      if (attempts < 10) {
+      if (attempts < 180) {
         frame = window.requestAnimationFrame(scrollToComment);
       } else {
         console.warn('[App] comment could not be located', targetPost);
@@ -171,7 +170,7 @@ export default function App() {
 
     frame = window.requestAnimationFrame(scrollToComment);
     return () => window.cancelAnimationFrame(frame);
-  }, [page, profileId, targetPost]);
+  }, [page, targetPost]);
 
   if (authLoading) {
     return (
@@ -201,7 +200,11 @@ export default function App() {
       <main className="min-w-0 w-full max-w-full overflow-x-hidden px-5 pb-28 pt-10 sm:px-8 sm:pt-14 lg:pb-20 lg:pl-72 lg:pr-12">
         <div key={`${page}-${profileId}`} className="glacier-page-flow mx-auto w-full min-w-0 max-w-xl">
           {page === 'community' && (
-            <CommunityPage onOpenProfile={openProfile} currentUserId={session.user.id} />
+            <CommunityPage
+              onOpenProfile={openProfile}
+              currentUserId={session.user.id}
+              targetPost={targetPost}
+            />
           )}
           {page === 'profile' && (
             <ProfilePage

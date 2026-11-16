@@ -14,6 +14,7 @@ const TABS: { id: FeedTab; label: string }[] = [
 interface CommunityPageProps {
   onOpenProfile: (userId: string) => void;
   currentUserId: string;
+  targetPost: { postId: string; replyId?: string } | null;
 }
 
 interface PostRow {
@@ -25,7 +26,7 @@ interface PostRow {
   is_hidden?: boolean | null;
 }
 
-export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPageProps) {
+export function CommunityPage({ onOpenProfile, currentUserId, targetPost }: CommunityPageProps) {
   const { isFollowing, getUser, loadPostLikes } = useSocial();
   const [tab, setTab] = useState<FeedTab>('following');
   const [posts, setPosts] = useState<Post[]>([]);
@@ -89,6 +90,10 @@ export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPagePro
     void loadPosts();
   }, [loadPosts]);
 
+  useEffect(() => {
+    if (targetPost) setTab('discover');
+  }, [targetPost]);
+
   const visiblePosts = useMemo(() => {
     const availablePosts = posts.filter((post) => !post.isHidden || post.authorId === currentUserId);
     if (tab === 'discover') return availablePosts;
@@ -141,6 +146,7 @@ export function CommunityPage({ onOpenProfile, currentUserId }: CommunityPagePro
                 post={post}
                 onOpenProfile={onOpenProfile}
                 currentUserId={currentUserId}
+                highlightReplyId={targetPost?.postId === post.id ? targetPost.replyId : undefined}
                 isPersisted
                 onPostUpdated={(postId, patch) =>
                   setPosts((prev) =>

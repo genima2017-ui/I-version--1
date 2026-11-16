@@ -20,6 +20,7 @@ export interface PrivateReply {
   id: string;
   postId: string;
   authorId: string;
+  receiverId?: string;
   replyToId?: string;
   content: string;
   createdAt: string;

@@ -59,7 +59,10 @@ export function PostCard({
   };
 
   const liked = isLiked(post.id);
-  const privateReplies = isOwn ? getPrivateReplies(post.id) : [];
+  const privateReplies = getPrivateReplies(post.id);
+  const hasPrivateConversation = privateReplies.some(
+    (reply) => reply.authorId === currentUserId || reply.receiverId === currentUserId,
+  );
   const postNotes = isOwn ? getPostNotes(post.id) : [];
 
   const [likePending, setLikePending] = useState(false);
@@ -190,7 +193,7 @@ export function PostCard({
               <span>{likeCount(post.id)}</span>
             </button>
 
-            {isOwn ? (
+            {isOwn || hasPrivateConversation ? (
               <button
                 type="button"
                 onClick={() => setRepliesOpen((open) => !open)}
@@ -204,7 +207,9 @@ export function PostCard({
                   <span className="text-xs tabular-nums">{privateReplies.length}</span>
                 )}
               </button>
-            ) : (
+            ) : null}
+
+            {!isOwn && (
               <button
                 type="button"
                 onClick={() => setReplyOpen(true)}
@@ -271,11 +276,10 @@ export function PostCard({
 
           </div>
 
-          {isOwn && repliesOpen && (
+          {(isOwn || hasPrivateConversation) && repliesOpen && (
             <div className="mt-5 animate-fade-in rounded-2xl bg-paper-200/70 p-4">
               <PrivateRepliesList
                 postId={post.id}
-                receiverId={post.authorId}
                 replies={privateReplies}
                 highlightReplyId={highlightReplyId}
               />
