@@ -22,7 +22,14 @@ export function InboxModal({ onClose, onOpenConversation, onOpenPost }: InboxMod
     getUser,
     markAllInboxItemsRead,
   } = useSocial();
-  const [activeCategory, setActiveCategory] = useState<InboxCategory>('comments');
+  const [activeCategory, setActiveCategory] = useState<InboxCategory>(() => {
+    const newestUnread = inboxItems.reduce<InboxItem | null>((latest, item) => {
+      if (item.isRead) return latest;
+      if (!latest || Date.parse(item.createdAt) > Date.parse(latest.createdAt)) return item;
+      return latest;
+    }, null);
+    return newestUnread?.category ?? 'comments';
+  });
   const categoryItems = inboxItems.filter((item) => item.category === activeCategory);
   const visibleItems =
     activeCategory === 'messages'
