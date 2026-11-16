@@ -268,6 +268,64 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     if (!currentUserId || !supabase) return;
 
     const channel = supabase
+      .channel(`messages-inbox-${currentUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const row = payload.new as unknown as MessageRow;
+          const messageId = String(row.id);
+          const participantId = row.sender_id ?? 'system';
+          const message: DirectMessage = {
+            id: messageId,
+            participantId,
+            senderId: row.sender_id ?? 'system',
+            content: row.content,
+            createdAt: row.created_at,
+          };
+
+          setDirectMessages((previous) => {
+            if (previous.some((item) => item.id === messageId)) return previous;
+            return [...previous, message].sort(
+              (left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt),
+            );
+          });
+
+          const inboxItem: InboxItem = {
+            id: `message-${messageId}`,
+            category: 'messages',
+            content: row.content,
+            senderId: row.sender_id ?? undefined,
+            createdAt: row.created_at,
+            isRead: row.is_read,
+          };
+          setInboxItems((previous) =>
+            previous.some((item) => item.id === inboxItem.id)
+              ? previous
+              : [...previous, inboxItem].sort(newestInboxFirst),
+          );
+        },
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('[Inbox] failed to subscribe to messages', status);
+        }
+      });
+
+    return () => {
+      void supabase?.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId || !supabase) return;
+
+    const channel = supabase
       .channel(`private-replies-inbox-${currentUserId}`)
       .on(
         'postgres_changes',
